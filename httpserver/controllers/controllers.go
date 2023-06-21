@@ -9,21 +9,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var (
-	ErrNotFound     = &errImpl{"not_found", "not found"}
-	ErrUnauthorized = &errImpl{"unauthorized", "unauthorized"}
-	ErrInternal     = &errImpl{"internal", "internal server error"}
-	ErrBadRequest   = &errImpl{"bad_request", "bad request"}
-)
-
-type errImpl struct {
-	code    string
-	message string
-}
-
-func (i *errImpl) Code() string  { return i.code }
-func (i *errImpl) Error() string { return i.message }
-
 type Interface interface {
 	Mount(cfg *config.Source, router chi.Router) error
 }

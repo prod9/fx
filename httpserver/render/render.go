@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"fx.prodigy9.co/data"
-	"fx.prodigy9.co/httpserver/controllers"
+	"fx.prodigy9.co/httpserver/httperrors"
 )
 
 func Text(resp http.ResponseWriter, r *http.Request, text string) {
@@ -35,7 +35,7 @@ func Redirect(resp http.ResponseWriter, r *http.Request, target string) {
 func Error(resp http.ResponseWriter, r *http.Request, status int, err error) {
 	// check for common global error types
 	if data.IsNoRows(err) {
-		Error(resp, r, 404, controllers.ErrNotFound)
+		Error(resp, r, 404, httperrors.ErrNotFound)
 		return
 	}
 

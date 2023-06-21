@@ -6,6 +6,7 @@ import (
 
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/httpserver/controllers"
+	"fx.prodigy9.co/httpserver/httperrors"
 	"fx.prodigy9.co/httpserver/middlewares"
 	"fx.prodigy9.co/httpserver/render"
 	"github.com/go-chi/chi/v5"
@@ -34,7 +35,7 @@ func (s *Server) Start() error {
 		}
 	}
 	r.NotFound(func(resp http.ResponseWriter, req *http.Request) {
-		render.Error(resp, req, 404, controllers.ErrNotFound)
+		render.Error(resp, req, 404, httperrors.ErrNotFound)
 	})
 
 	listenAddr := config.Get(s.cfg, ListenAddrConfig)
