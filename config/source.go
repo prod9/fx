@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var defaultSource *Source = NewSource(nil)
+var defaultSource *Source = &Source{}
 
 // Source represents a source of configuration values. You can Get configuration values
 // from it. At the moment it simply gets value from os.Env ensuring that godotenv is
@@ -44,9 +44,7 @@ func NewSource(vars []_Var) *Source {
 // Configure creates a Source that automatically includes all Variables declared in the
 // application through NewVar or the typed variants.
 func Configure() *Source {
-	return defaultSource
-	// clone := *defaultSource
-	// return &clone
+	return NewSource(defaultSource.vars)
 }
 
 func (s *Source) Vars() []_Var {
