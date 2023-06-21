@@ -13,6 +13,7 @@ require (
 	github.com/redis/go-redis/v9 v9.0.3
 	github.com/rs/cors v1.8.3
 	github.com/spf13/cobra v1.7.0
+	go.jonnrb.io/vanity v0.2.0
 	golang.org/x/crypto v0.8.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 )
@@ -25,7 +26,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/term v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 )
