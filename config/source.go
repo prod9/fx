@@ -1,10 +1,16 @@
 package config
 
 import (
-	"github.com/joho/godotenv"
+	"errors"
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
+
+	"github.com/joho/godotenv"
 )
+
+const DotEnvSearchLimit = 5
 
 var defaultSource *Source = &Source{}
 
@@ -23,12 +29,9 @@ type Source struct {
 
 // NewSource create a new, empty Source.
 func NewSource(vars []_Var) *Source {
-	var envs []string
-	if _, err := os.Stat(".env.local"); !os.IsNotExist(err) {
-		envs = append(envs, ".env.local")
-	}
-	if _, err := os.Stat(".env"); !os.IsNotExist(err) {
-		envs = append(envs, ".env")
+	envs, err := findDotEnvs()
+	if err != nil {
+		log.Println("config:", err)
 	}
 
 	if len(envs) > 0 {
@@ -49,4 +52,44 @@ func Configure() *Source {
 
 func (s *Source) Vars() []_Var {
 	return s.vars
+}
+
+func findDotEnvs() ([]string, error) {
+	var envs []string
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	} else if wd, err = filepath.Abs(wd); err != nil {
+		return nil, err
+	}
+
+	for n := 0; n < DotEnvSearchLimit; n++ {
+		dotgit := filepath.Join(wd, ".git")
+		dotenv := filepath.Join(wd, ".env.local")
+		dotenvlocal := filepath.Join(wd, ".env")
+
+		if _, err := os.Stat(dotenvlocal); err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				return nil, err
+			} // else no-op
+		} else {
+			envs = append(envs, dotenvlocal)
+		}
+		if _, err := os.Stat(dotenv); err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				return nil, err
+			} // else no-op
+		} else {
+			envs = append(envs, dotenv)
+		}
+
+		if _, err := os.Stat(dotgit); !errors.Is(err, fs.ErrNotExist) {
+			// we found a .git, most likely project's root so we stop here
+			break
+		} else {
+			wd = filepath.Dir(wd) // go up 1 dir
+		}
+	}
+
+	return envs, nil
 }
