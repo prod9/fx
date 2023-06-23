@@ -16,6 +16,7 @@ func BuildRootCommand(desc string, extraCmds ...*cobra.Command) *cobra.Command {
 	rootCmd := &cobra.Command{Use: "app", Short: desc}
 	rootCmd.AddCommand(
 		PrintConfigCmd,
+		testEmailCmd,
 		data.Cmd,
 	)
 
