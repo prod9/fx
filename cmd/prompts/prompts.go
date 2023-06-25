@@ -9,6 +9,11 @@ import (
 	"github.com/pterm/pterm"
 )
 
+var CIConfig = config.Bool("CI")
+
+// AlwaysYesConfig allows user to set ALWAYS_YES=1 so any confirmation prompt will result
+// in a "yes" answer without requiring any user interaction. Useful in deployments, CI and
+// automation scripts.
 var AlwaysYesConfig = config.Bool("ALWAYS_YES")
 
 type Session struct {
@@ -33,6 +38,9 @@ func (s *Session) Args() []string {
 }
 
 func (s *Session) Confirm(what, yes, no string) bool {
+	if config.Get(s.cfg, CIConfig) {
+		return true
+	}
 	if config.Get(s.cfg, AlwaysYesConfig) {
 		return true
 	}
