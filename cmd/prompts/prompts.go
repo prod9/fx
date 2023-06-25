@@ -1,23 +1,18 @@
 package prompts
 
 import (
-	"bufio"
-	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"fx.prodigy9.co/config"
-
-	"golang.org/x/crypto/ssh/terminal"
+	"fx.prodigy9.co/slices"
+	"github.com/pterm/pterm"
 )
 
 var AlwaysYesConfig = config.Bool("ALWAYS_YES")
 
 type Session struct {
-	cfg     *config.Source
-	scanner *bufio.Scanner
-
+	cfg  *config.Source
 	args []string
 }
 
@@ -25,27 +20,38 @@ func New(cfg *config.Source, args []string) *Session {
 	if cfg == nil {
 		cfg = config.Configure()
 	}
-	return &Session{cfg, nil, args}
+	return &Session{cfg, args}
 }
 
 func (s *Session) Len() int {
 	return len(s.args)
 }
 
-func (s *Session) YesNo(question string) bool {
+// Args return leftover unconsumed args
+func (s *Session) Args() []string {
+	return s.args
+}
+
+func (s *Session) Confirm(what, yes, no string) bool {
 	if config.Get(s.cfg, AlwaysYesConfig) {
 		return true
 	}
 
-	answer := s.readYesNo(question)
-	answer = strings.TrimSpace(answer)
-	answer = strings.ToUpper(answer)
-	switch answer {
-	case "1", "Y", "YES":
-		return true
-	default:
+	result, err := pterm.DefaultInteractiveConfirm.
+		WithDefaultText(what).
+		WithConfirmText(yes).
+		WithRejectText(no).
+		Show()
+	if err != nil {
+		log.Fatalln(err)
 		return false
+	} else {
+		return result
 	}
+}
+
+func (s *Session) YesNo(question string) bool {
+	return s.Confirm(question, "yes", "no")
 }
 
 func (s *Session) SensitiveStr(item string) string {
@@ -53,12 +59,17 @@ func (s *Session) SensitiveStr(item string) string {
 		head, tail := s.args[0], s.args[1:]
 		s.args = tail
 		return head
+	}
 
+	result, err := pterm.DefaultInteractiveTextInput.
+		WithMask("*").
+		WithDefaultText(item).
+		Show()
+	if err != nil {
+		log.Fatalln(err)
+		return ""
 	} else {
-		input := s.readSensitiveInput(item)
-		fmt.Fprintln(os.Stdout)
-		return input
-
+		return strings.TrimSpace(result)
 	}
 }
 
@@ -75,56 +86,37 @@ func (s *Session) Str(item string) string {
 		head, tail := s.args[0], s.args[1:]
 		s.args = tail
 		return head
-
-	} else {
-		return s.readInput(item)
-
-	}
-}
-
-func (s *Session) readYesNo(question string) string {
-	if s.scanner == nil {
-		s.scanner = bufio.NewScanner(os.Stdin)
 	}
 
-	fmt.Fprintf(os.Stderr, question+" (y/n)? ")
-	return s.mustScan()
-}
-
-func (s *Session) readSensitiveInput(item string) string {
-	fmt.Fprintf(os.Stderr, "enter "+item+" securely: ")
-	return s.mustScanSensitive()
-}
-
-func (s *Session) readInput(item string) string {
-	if s.scanner == nil {
-		s.scanner = bufio.NewScanner(os.Stdin)
-	}
-
-	fmt.Fprintf(os.Stderr, "enter "+item+": ")
-	return s.mustScan()
-}
-
-func (s *Session) mustScanSensitive() string {
-	bytes, err := terminal.ReadPassword(0)
+	result, err := pterm.DefaultInteractiveTextInput.
+		WithDefaultText(item).
+		Show()
 	if err != nil {
-		log.Fatalln("i/o error", err)
+		log.Fatalln(err)
 		return ""
+	} else {
+		return strings.TrimSpace(result)
 	}
-
-	return string(bytes)
 }
 
-func (s *Session) mustScan() string {
-	if !s.scanner.Scan() {
-		if s.scanner.Err() != nil {
-			log.Fatalln("i/o error", s.scanner.Err())
-			return ""
-		} else {
-			log.Fatalln("expect more input on stdin")
-			return ""
+func (s *Session) List(question, def string, options []string) string {
+	if len(s.args) > 0 {
+		head, tail := s.args[0], s.args[1:]
+		if slices.In(options, head) {
+			s.args = tail
+			return head
 		}
 	}
 
-	return s.scanner.Text()
+	result, err := pterm.DefaultInteractiveSelect.
+		WithDefaultText(question).
+		WithOptions(options).
+		WithDefaultOption(def).
+		Show()
+	if err != nil {
+		log.Fatalln(err)
+		return ""
+	} else {
+		return result
+	}
 }
