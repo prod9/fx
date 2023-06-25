@@ -21,8 +21,11 @@ type Session struct {
 	args []string
 }
 
-func New(ctx *config.Source, args []string) *Session {
-	return &Session{ctx, nil, args}
+func New(cfg *config.Source, args []string) *Session {
+	if cfg == nil {
+		cfg = config.Configure()
+	}
+	return &Session{cfg, nil, args}
 }
 
 func (s *Session) Len() int {
