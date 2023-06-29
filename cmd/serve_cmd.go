@@ -15,6 +15,9 @@ func BuildServeCommand(mws []middlewares.Interface, ctrs []controllers.Interface
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg := config.Configure()
 			srv := httpserver.New(cfg, mws, ctrs)
+			if err := srv.PrepareRouter(); err != nil {
+				return err
+			}
 			return srv.Start()
 		},
 	}

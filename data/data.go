@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"fx.prodigy9.co/structs"
 	"log"
 	"net/url"
 	"strings"
@@ -39,6 +40,18 @@ func Connect(cfg *config.Source) (*sqlx.DB, error) {
 }
 
 func CreateDB(cfg *config.Source) error {
+	return modifyDB(cfg, "CREATE DATABASE \"%s\"")
+}
+
+func DropDB(cfg *config.Source) error {
+	rawURL := config.Get(cfg, DatabaseURLConfig)
+	if !strings.Contains(rawURL, "test") {
+		panic("wont drop non test db")
+	}
+	return modifyDB(cfg, "DROP DATABASE IF EXISTS \"%s\" WITH (FORCE)")
+}
+
+func modifyDB(cfg *config.Source, action string) error {
 	rawURL := config.Get(cfg, DatabaseURLConfig)
 
 	parsedURL, err := url.Parse(rawURL)
@@ -57,7 +70,7 @@ func CreateDB(cfg *config.Source) error {
 		return fmt.Errorf("database: %w", err)
 	}
 
-	if _, err = db.Exec("CREATE DATABASE " + dbName); err != nil {
+	if _, err = db.Exec(fmt.Sprintf(action, dbName)); err != nil {
 		return fmt.Errorf("database: %w", err)
 	} else {
 		return nil
@@ -92,9 +105,49 @@ func Select(ctx context.Context, out any, sql string, args ...any) (err error) {
 	})
 }
 
+func Find(ctx context.Context, out any, sql string, filter interface{}) (err error) {
+	q := &QueryBuilder{
+		Sql:    sql,
+		Filter: *structs.Parse(filter),
+	}
+	q.Where().Order().Paginate()
+	return Run(ctx, func(s Scope) error {
+		return s.Select(out, q.Sql, q.Args...)
+	})
+}
+
+func FindWithCount(ctx context.Context, out any, sql string, filter interface{}, columns string) (cnt *int, err error) {
+	err = Find(ctx, out, strings.Replace(sql, "{columns}", columns, 1), filter)
+	if err != nil {
+		return nil, err
+	}
+	q := &QueryBuilder{
+		Sql:    sql,
+		Filter: *structs.Parse(filter),
+	}
+	q.Count()
+	selectSql, args := q.QueryParams()
+	var count int
+	err = Run(ctx, func(s Scope) error {
+		return s.Get(&count, selectSql, args...)
+	})
+	return &count, err
+}
+
 func Exec(ctx context.Context, sql string, args ...any) error {
 	return Run(ctx, func(s Scope) error {
 		return s.Exec(sql, args...)
+	})
+}
+
+func Update(ctx context.Context, sql string, filter interface{}) error {
+	q := &QueryBuilder{
+		Sql:    sql,
+		Filter: *structs.Parse(filter),
+	}
+	q.Update().Where()
+	return Run(ctx, func(s Scope) error {
+		return s.Exec(q.Sql, q.Args...)
 	})
 }
 

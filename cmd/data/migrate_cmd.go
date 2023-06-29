@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"fmt"
 	"fx.prodigy9.co/cmd/prompts"
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
@@ -16,15 +15,19 @@ import (
 var migrateCmd = &cobra.Command{
 	Use:   "migrate [migrations-dir]",
 	Short: "Runs all migration scripts in the configured migrations dir.",
-	RunE:  runMigrateCmd,
+	RunE:  RunMigrateCmd,
 }
 
-func runMigrateCmd(cmd *cobra.Command, args []string) error {
+func RunMigrateCmd(cmd *cobra.Command, args []string) error {
 	return runMigration(migrator.IntentMigrate, args)
 }
 
 func runMigration(intent migrator.Intent, args []string) (err error) {
 	defer errutil.Wrap("migrate", &err)
+	apply := false
+	if len(args) == 1 && args[0] == "y" {
+		apply = true
+	}
 
 	var (
 		cfg    = config.Configure()
@@ -56,7 +59,7 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 	}
 
 	for _, plan := range plans {
-		fmt.Println(plan)
+		log.Println(plan)
 	}
 
 	if dirty {
@@ -67,12 +70,12 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 	}
 
 	log.Println(len(plans), "migrations planned")
-	if !prompt.YesNo("apply changes") {
+	if !apply && !prompt.YesNo("apply changes") {
 		return nil
 	}
 
 	for _, plan := range plans {
-		fmt.Println(plan)
+		log.Println(plan)
 		if err := migrator.Apply(scope.Context(), plan); err != nil {
 			log.Fatalln("failed to run migration", err)
 		}
