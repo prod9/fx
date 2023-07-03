@@ -2,6 +2,7 @@ package render
 
 import (
 	"encoding/json"
+	"fx.prodigy9.co/errutil"
 	"io"
 	"log"
 	"net/http"
@@ -18,7 +19,12 @@ func Text(resp http.ResponseWriter, r *http.Request, text string) {
 	}
 }
 
-func JSON(resp http.ResponseWriter, r *http.Request, obj interface{}) {
+func JSON(resp http.ResponseWriter, r *http.Request, obj interface{}, err ...error) {
+	if err != nil && err[0] != nil {
+		Error(resp, r, http.StatusInternalServerError, err[0])
+		return
+	}
+
 	resp.Header().Set("Content-Type", "application/json")
 	resp.WriteHeader(200)
 	if err := json.NewEncoder(resp).Encode(obj); err != nil {
@@ -62,11 +68,17 @@ func FileTransfer(resp http.ResponseWriter, r *http.Request, filename string, re
 
 func decorateError(err error) interface{} {
 	errObj := &struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
+		Code       string                 `json:"code"`
+		Message    string                 `json:"message"`
+		Validation map[string]interface{} `json:"validation,omitempty"`
 	}{
 		Code:    "unknown",
 		Message: err.Error(),
+	}
+
+	if validationErr, ok := err.(errutil.ValidationErrors); ok {
+		errObj.Validation = validationErr.FieldMap()
+		errObj.Message = "validation error"
 	}
 
 	if code, ok := err.(interface{ Code() string }); ok {

@@ -14,6 +14,7 @@ func DefaultForAPI() []Interface {
 		LogRequests,
 		CORSAllowAll,
 		AddDataContext,
+		Validator,
 		// MountControllers middleware are called when building serve_cmd
 	}
 }
