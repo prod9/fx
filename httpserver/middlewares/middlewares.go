@@ -10,6 +10,7 @@ type Interface func(*config.Source) func(http.Handler) http.Handler
 
 func DefaultForAPI() []Interface {
 	return []Interface{
+		CopyRequestBody,
 		Configure,
 		LogRequests,
 		CORSAllowAll,
