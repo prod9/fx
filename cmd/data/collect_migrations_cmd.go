@@ -17,10 +17,10 @@ import (
 var collectMigrationsCmd = &cobra.Command{
 	Use:   "collect-migrations (outdir)",
 	Short: "Copies all detected migration files in the repository to the specified directory.",
-	RunE:  runCollectMigrationsCmd,
+	RunE:  RunCollectMigrationsCmd,
 }
 
-func runCollectMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
+func RunCollectMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
 	defer errutil.Wrap("collect-migrations", &err)
 
 	var (

@@ -3,6 +3,7 @@ package app
 import (
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
+	"github.com/go-chi/chi/v5"
 	"github.com/spf13/cobra"
 )
 
@@ -10,8 +11,9 @@ type Builder struct {
 	appImpl
 }
 
-func Build() *Builder           { return &Builder{} }
-func (b *Builder) Start() error { return Start(&b.appImpl) }
+func Build() *Builder                  { return &Builder{} }
+func (b *Builder) Start() error        { return Start(&b.appImpl) }
+func (b *Builder) GetRouter() *chi.Mux { return GetRouter(&b.appImpl) }
 
 func (b *Builder) Name(name string) *Builder {
 	b.name = name

@@ -2,8 +2,11 @@ package app
 
 import (
 	"fx.prodigy9.co/cmd"
+	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/httpserver"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
+	"github.com/go-chi/chi/v5"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +18,14 @@ type Interface interface {
 	Commands() []*cobra.Command
 	Middlewares() []middlewares.Interface
 	Controllers() []controllers.Interface
+}
+
+func GetRouter(app Interface) *chi.Mux {
+	cfg := config.Configure()
+	_, mws, ctrs := collect(app)
+	srv := httpserver.New(cfg, mws, ctrs)
+	_ = srv.PrepareRouter()
+	return srv.GetRouter()
 }
 
 func Start(app Interface) error {
