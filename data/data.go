@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/structs"
 	"log"
 	"net/url"
 	"strings"
+
+	"fx.prodigy9.co/config"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -39,6 +40,18 @@ func Connect(cfg *config.Source) (*sqlx.DB, error) {
 }
 
 func CreateDB(cfg *config.Source) error {
+	return modifyDB(cfg, "CREATE DATABASE \"%s\"")
+}
+
+func DropDB(cfg *config.Source) error {
+	rawURL := config.Get(cfg, DatabaseURLConfig)
+	if !strings.Contains(rawURL, "test") {
+		panic("wont drop non test db")
+	}
+	return modifyDB(cfg, "DROP DATABASE IF EXISTS \"%s\" WITH (FORCE)")
+}
+
+func modifyDB(cfg *config.Source, action string) error {
 	rawURL := config.Get(cfg, DatabaseURLConfig)
 
 	parsedURL, err := url.Parse(rawURL)
@@ -57,7 +70,7 @@ func CreateDB(cfg *config.Source) error {
 		return fmt.Errorf("database: %w", err)
 	}
 
-	if _, err = db.Exec("CREATE DATABASE " + dbName); err != nil {
+	if _, err = db.Exec(fmt.Sprintf(action, dbName)); err != nil {
 		return fmt.Errorf("database: %w", err)
 	} else {
 		return nil

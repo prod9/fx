@@ -19,7 +19,7 @@ import (
 
 const upMigrationTemplate = `-- vim: filetype=SQL
 CREATE TABLE dummy (
-	id TEXT PRIMARY KEY,
+	id VARCHAR(26) PRIMARY KEY,
 	created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 `

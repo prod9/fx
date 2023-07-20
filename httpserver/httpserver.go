@@ -18,27 +18,34 @@ type Server struct {
 	cfg  *config.Source
 	mws  []middlewares.Interface
 	ctrs []controllers.Interface
+	r    *chi.Mux
 }
 
 func New(cfg *config.Source, mws []middlewares.Interface, ctrs []controllers.Interface) *Server {
-	return &Server{cfg, mws, ctrs}
+	return &Server{cfg, mws, ctrs, chi.NewRouter()}
 }
 
-func (s *Server) Start() error {
-	r := chi.NewRouter()
+func (s *Server) GetRouter() *chi.Mux {
+	return s.r
+}
+
+func (s *Server) PrepareRouter() error {
 	for _, mws := range s.mws {
-		r.Use(mws(s.cfg))
+		s.r.Use(mws(s.cfg))
 	}
 	for _, ctr := range s.ctrs {
-		if err := ctr.Mount(s.cfg, r); err != nil {
+		if err := ctr.Mount(s.cfg, s.r); err != nil {
 			return err
 		}
 	}
-	r.NotFound(func(resp http.ResponseWriter, req *http.Request) {
+	s.r.NotFound(func(resp http.ResponseWriter, req *http.Request) {
 		render.Error(resp, req, 404, httperrors.ErrNotFound)
 	})
+	return nil
+}
 
+func (s *Server) Start() error {
 	listenAddr := config.Get(s.cfg, ListenAddrConfig)
 	log.Println("listening on " + listenAddr)
-	return http.ListenAndServe(listenAddr, r)
+	return http.ListenAndServe(listenAddr, s.r)
 }
