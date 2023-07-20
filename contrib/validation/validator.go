@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/contrib/resources"
 	"fx.prodigy9.co/httpserver/render"
 	"github.com/ggicci/httpin"
 	"github.com/go-chi/chi/v5"
@@ -73,6 +74,7 @@ func Validation(form interface{}) []func(next http.Handler) http.Handler {
 	return []func(next http.Handler) http.Handler{
 		requestToStruct(form),
 		structValidator(form),
+		resources.RouteResourceMapper(),
 	}
 }
 
