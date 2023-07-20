@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/structs"
 	"log"
 	"net/url"
 	"strings"
-
-	"fx.prodigy9.co/config"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -92,9 +92,49 @@ func Select(ctx context.Context, out any, sql string, args ...any) (err error) {
 	})
 }
 
+func Find(ctx context.Context, out any, sql string, filter interface{}) (err error) {
+	q := &QueryBuilder{
+		Sql:    sql,
+		Filter: *structs.Parse(filter),
+	}
+	q.Where().Order().Paginate()
+	return Run(ctx, func(s Scope) error {
+		return s.Select(out, q.Sql, q.Args...)
+	})
+}
+
+func FindWithCount(ctx context.Context, out any, sql string, filter interface{}, columns string) (cnt *int, err error) {
+	err = Find(ctx, out, strings.Replace(sql, "{columns}", columns, 1), filter)
+	if err != nil {
+		return nil, err
+	}
+	q := &QueryBuilder{
+		Sql:    sql,
+		Filter: *structs.Parse(filter),
+	}
+	q.Count()
+	selectSql, args := q.QueryParams()
+	var count int
+	err = Run(ctx, func(s Scope) error {
+		return s.Get(&count, selectSql, args...)
+	})
+	return &count, err
+}
+
 func Exec(ctx context.Context, sql string, args ...any) error {
 	return Run(ctx, func(s Scope) error {
 		return s.Exec(sql, args...)
+	})
+}
+
+func Update(ctx context.Context, sql string, filter interface{}) error {
+	q := &QueryBuilder{
+		Sql:    sql,
+		Filter: *structs.Parse(filter),
+	}
+	q.Update().Where()
+	return Run(ctx, func(s Scope) error {
+		return s.Exec(q.Sql, q.Args...)
 	})
 }
 
