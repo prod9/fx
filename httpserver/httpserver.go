@@ -3,6 +3,9 @@ package httpserver
 import (
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/httpserver/controllers"
@@ -39,6 +42,22 @@ func (s *Server) Start() error {
 	})
 
 	listenAddr := config.Get(s.cfg, ListenAddrConfig)
+	srv := http.Server{
+		Addr: listenAddr,
+	}
+
+	ctrlC := make(chan os.Signal, 1)
+	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-ctrlC
+		srv.Shutdown(nil)
+	}()
+
 	log.Println("listening on " + listenAddr)
-	return http.ListenAndServe(listenAddr, r)
+	err := srv.ListenAndServe()
+	if err == http.ErrServerClosed {
+		return nil
+	} else {
+		return err
+	}
 }
