@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"fx.prodigy9.co/config"
 )
@@ -29,21 +30,21 @@ func NewClient(cfg *config.Source) *Client {
 
 func (c *Client) ListDocs() (*More[*Doc], error) {
 	more := &More[*Doc]{}
-	if err := c.CallAPI(more, nil, "GET", "/docs"); err != nil {
+	if err := c.CallAPI(more, nil, "GET", "/docs", nil); err != nil {
 		return nil, err
 	}
 	return more, nil
 }
 func (c *Client) ListPages(docID string) (*More[*Page], error) {
 	more, p := &More[*Page]{}, "/docs/"+url.PathEscape(docID)+"/pages"
-	if err := c.CallAPI(more, nil, "GET", p); err != nil {
+	if err := c.CallAPI(more, nil, "GET", p, nil); err != nil {
 		return nil, err
 	}
 	return more, nil
 }
 func (c *Client) ListTables(docID string) (*More[*Table], error) {
 	more, p := &More[*Table]{}, "/docs/"+url.PathEscape(docID)+"/tables?tableType=table"
-	if err := c.CallAPI(more, nil, "GET", p); err != nil {
+	if err := c.CallAPI(more, nil, "GET", p, nil); err != nil {
 		return nil, err
 	} else {
 		return more, nil
@@ -51,25 +52,39 @@ func (c *Client) ListTables(docID string) (*More[*Table], error) {
 }
 func (c *Client) ListColumns(docID, tableID string) (*More[*Column], error) {
 	more, p := &More[*Column]{}, "/docs/"+url.PathEscape(docID)+"/tables/"+url.PathEscape(tableID)+"/columns"
-	if err := c.CallAPI(more, nil, "GET", p); err != nil {
+	if err := c.CallAPI(more, nil, "GET", p, nil); err != nil {
 		return nil, err
 	} else {
 		return more, nil
 	}
 }
 func (c *Client) ListRows(docID, tableID string) (*More[*Row], error) {
+	return c.ListRowsWithQuery(docID, tableID, nil)
+}
+func (c *Client) ListRowsWithQuery(docID, tableID string, query map[string]string) (*More[*Row], error) {
+	qs := url.Values{}
+	if len(query) > 0 {
+		for key, value := range query {
+			qs.Add("query", fmt.Sprintf(`%s="%s"`, c.escapeQuery(key), c.escapeQuery(value)))
+		}
+	}
+
 	more, p := &More[*Row]{}, "/docs/"+url.PathEscape(docID)+"/tables/"+url.PathEscape(tableID)+"/rows"
-	if err := c.CallAPI(more, nil, "GET", p); err != nil {
+	if err := c.CallAPI(more, nil, "GET", p, qs); err != nil {
 		return nil, err
 	} else {
 		return more, nil
 	}
 }
 
-func (c *Client) CallAPI(result, payload any, method, path string) error {
+func (c *Client) CallAPI(result, payload any, method, path string, qs url.Values) error {
 	u, err := url.Parse(APIPrefix + path + "?valueFormat=rich")
 	if err != nil {
 		return fmt.Errorf("coda: %w", err)
+	}
+
+	if len(qs) > 0 {
+		u.RawQuery = qs.Encode()
 	}
 
 	buffer := &bytes.Buffer{}
@@ -108,4 +123,10 @@ func (c *Client) CallAPI(result, payload any, method, path string) error {
 		}
 	}
 	return nil
+}
+
+func (c *Client) escapeQuery(s string) string {
+	s = strings.Replace(s, `"`, `\"`, -1)
+	s = strings.Replace(s, `=`, `\=`, -1)
+	return `"` + s + `"`
 }

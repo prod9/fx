@@ -24,7 +24,7 @@ func LoadMore[T any](c *Client, more *More[T]) (*More[T], error) {
 	}
 
 	m := &More[T]{}
-	if err := c.CallAPI(m, nil, "GET", m.NextPageLink); err != nil {
+	if err := c.CallAPI(m, nil, "GET", m.NextPageLink, nil); err != nil {
 		return nil, err
 	} else {
 		return m, nil
