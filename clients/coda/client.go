@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"fx.prodigy9.co/config"
 )
@@ -65,7 +64,7 @@ func (c *Client) ListRowsWithQuery(docID, tableID string, query map[string]strin
 	qs := url.Values{}
 	if len(query) > 0 {
 		for key, value := range query {
-			qs.Add("query", fmt.Sprintf(`%s="%s"`, c.escapeQuery(key), c.escapeQuery(value)))
+			qs.Add("query", fmt.Sprintf(`%s:%s`, key, c.encodeQueryValue(value)))
 		}
 	}
 
@@ -125,8 +124,7 @@ func (c *Client) CallAPI(result, payload any, method, path string, qs url.Values
 	return nil
 }
 
-func (c *Client) escapeQuery(s string) string {
-	s = strings.Replace(s, `"`, `\"`, -1)
-	s = strings.Replace(s, `=`, `\=`, -1)
-	return `"` + s + `"`
+func (c *Client) encodeQueryValue(s string) string {
+	b, _ := json.Marshal(s) // encoding a string should never fails
+	return string(b)
 }
