@@ -18,7 +18,7 @@ var (
 	client *minio.Client
 )
 
-func Connect(cfg *config.Source) (*minio.Client, error) {
+func connect(cfg *config.Source) (*minio.Client, error) {
 	if client != nil {
 		return client, nil
 	}
@@ -41,7 +41,7 @@ func Connect(cfg *config.Source) (*minio.Client, error) {
 }
 
 func GeneratePresignedGetURL(bucket, objectKey string, expiry time.Duration) (string, error) {
-	client, err := Connect(config.Configure())
+	client, err := connect(config.Configure())
 	if err != nil {
 		return "", fmt.Errorf("failed to initialize cloud client: %v", err)
 	}
@@ -55,7 +55,7 @@ func GeneratePresignedGetURL(bucket, objectKey string, expiry time.Duration) (st
 }
 
 func GeneratePresignedPutURL(bucket, objectKey string, expiry time.Duration) (string, error) {
-	client, err := Connect(config.Configure())
+	client, err := connect(config.Configure())
 	if err != nil {
 		return "", fmt.Errorf("failed to initialize cloud client: %v", err)
 	}
@@ -69,7 +69,7 @@ func GeneratePresignedPutURL(bucket, objectKey string, expiry time.Duration) (st
 }
 
 func DeleteObject(bucket, objectKey string) error {
-	client, err := Connect(config.Configure())
+	client, err := connect(config.Configure())
 	if err != nil {
 		return fmt.Errorf("failed to initialize cloud client: %v", err)
 	}
