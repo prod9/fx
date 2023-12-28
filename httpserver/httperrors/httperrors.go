@@ -1,16 +1,10 @@
 package httperrors
 
+import "fx.prodigy9.co/errutil"
+
 var (
-	ErrNotFound     = &errImpl{"not_found", "not found"}
-	ErrUnauthorized = &errImpl{"unauthorized", "unauthorized"}
-	ErrInternal     = &errImpl{"internal", "internal server error"}
-	ErrBadRequest   = &errImpl{"bad_request", "bad request"}
+	ErrNotFound     = errutil.NewCoded("not_found", "not found", nil)
+	ErrUnauthorized = errutil.NewCoded("unauthorized", "unauthorized", nil)
+	ErrInternal     = errutil.NewCoded("internal", "internal server error", nil)
+	ErrBadRequest   = errutil.NewCoded("bad_request", "bad request", nil)
 )
-
-type errImpl struct {
-	code    string
-	message string
-}
-
-func (i *errImpl) Code() string  { return i.code }
-func (i *errImpl) Error() string { return i.message }

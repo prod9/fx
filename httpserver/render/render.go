@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"fx.prodigy9.co/data"
+	"fx.prodigy9.co/errutil"
 	"fx.prodigy9.co/httpserver/httperrors"
 )
 
@@ -42,7 +43,7 @@ func Error(resp http.ResponseWriter, r *http.Request, status int, err error) {
 	resp.Header().Set("Content-Type", "application/json")
 	resp.WriteHeader(status)
 
-	errObj := decorateError(err)
+	errObj := errutil.Decorate(err)
 	if err_ := json.NewEncoder(resp).Encode(errObj); err_ != nil {
 		log.Printf("%s %s %s - %s\n",
 			r.RemoteAddr, r.Method, r.RequestURI, err_.Error())
@@ -50,7 +51,6 @@ func Error(resp http.ResponseWriter, r *http.Request, status int, err error) {
 }
 
 func FileTransfer(resp http.ResponseWriter, r *http.Request, filename string, reader io.Reader) {
-	resp.Header().Set("Content-Description", "File Transfer")
 	resp.Header().Set("Content-Transfer-Encoding", "binary")
 	resp.Header().Set("Content-Disposition", "attachment; filename="+filename)
 	resp.Header().Set("Content-Type", "application/octet-stream")
@@ -58,20 +58,4 @@ func FileTransfer(resp http.ResponseWriter, r *http.Request, filename string, re
 	if _, err := io.Copy(resp, reader); err != nil {
 		Error(resp, r, http.StatusInternalServerError, err)
 	}
-}
-
-func decorateError(err error) interface{} {
-	errObj := &struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
-	}{
-		Code:    "unknown",
-		Message: err.Error(),
-	}
-
-	if code, ok := err.(interface{ Code() string }); ok {
-		errObj.Code = code.Code()
-	}
-
-	return errObj
 }
