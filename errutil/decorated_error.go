@@ -17,7 +17,7 @@ func NewCoded(code, msg string, data any) error {
 
 func Decorate(err error) error {
 	if err == nil {
-		return err
+		return nil
 	}
 
 	outerr := &decoratedErr{inner: err, Message: err.Error()}

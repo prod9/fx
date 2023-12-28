@@ -6,7 +6,7 @@ type FieldError struct {
 	Value   any    `json:"value,omitempty"`
 }
 
-func NewFieldError(field, msg string, value any) *FieldError {
+func NewFieldError(field, msg string, value any) error {
 	return &FieldError{field, msg, value}
 }
 
@@ -20,10 +20,4 @@ func (e *FieldError) ErrorData() any {
 
 func (e *FieldError) Error() string {
 	return e.Field + ": " + e.Message
-}
-
-func (e *FieldError) WithMessage(msg string) *FieldError {
-	clone := *e
-	clone.Message = msg
-	return &clone
 }

@@ -5,21 +5,32 @@ import (
 	"strings"
 )
 
-func Multi(fieldErrs ...*FieldError) error {
-	if len(fieldErrs) == 0 {
+func Multi(errs ...error) error {
+	if len(errs) == 0 {
 		return nil
 	}
 
-	var err *Error
-	err = err.Add(fieldErrs...)
-	if err.Len() == 0 {
+	var outerr *Error
+	for _, err := range errs {
+		if err == nil {
+			continue
+		}
+
+		if fieldErr, ok := err.(*FieldError); !ok {
+			panic("validate.Multi: errors must all be *FieldError")
+		} else {
+			outerr = outerr.Add(fieldErr)
+		}
+	}
+
+	if outerr.Len() == 0 {
 		return nil
 	} else {
-		return err
+		return outerr
 	}
 }
 
-func Required(field, value string) *FieldError {
+func Required(field, value string) error {
 	if strings.TrimSpace(value) == "" {
 		return NewFieldError(field, "missing", value)
 	} else {
@@ -27,7 +38,7 @@ func Required(field, value string) *FieldError {
 	}
 }
 
-func StrLen(field, value string, minLen int) *FieldError {
+func StrLen(field, value string, minLen int) error {
 	if len(strings.TrimSpace(value)) < minLen {
 		return NewFieldError(field, "too short, "+strconv.Itoa(minLen)+" characters required", value)
 	} else {
@@ -35,7 +46,7 @@ func StrLen(field, value string, minLen int) *FieldError {
 	}
 }
 
-func FieldsMatch(field1, value1, field2, value2 string) *FieldError {
+func FieldsMatch(field1, value1, field2, value2 string) error {
 	if value1 != value2 {
 		return NewFieldError(field2, "does not match", value1)
 	} else {
