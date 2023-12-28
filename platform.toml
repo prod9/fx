@@ -20,6 +20,7 @@ excludes = [
 ]
 
 [modules.fx]
+args = ["serve"]
 builder = "go/basic"
 image = "ghcr.io/prod9/fx"
 package = "fx.prodigy9.co"
