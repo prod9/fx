@@ -30,6 +30,10 @@ func (b *Builder) Command(cmd *cobra.Command) *Builder {
 	b.commands = append(b.commands, cmd)
 	return b
 }
+func (b *Builder) Commands(cmds ...*cobra.Command) *Builder {
+	b.commands = append(b.commands, cmds...)
+	return b
+}
 func (b *Builder) DefaultAPIMiddlewares() *Builder {
 	return b.Middlewares(middlewares.DefaultForAPI()...)
 }
