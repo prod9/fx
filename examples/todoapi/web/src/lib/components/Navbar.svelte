@@ -3,7 +3,8 @@
 	import { delete_ } from "$lib/api.js";
 	import { user } from "$lib/stores/user";
 
-	$: hasUser = !!$user?.username;
+	$: username = $user?.username;
+	$: hasUser = !!username;
 
 	const handleLogout = async () => {
 		let response = await delete_("/api/logout", { fetch });
@@ -19,7 +20,11 @@
 	};
 </script>
 
-<nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+<nav
+	class="navbar is-dark is-spaced has-shadow"
+	role="navigation"
+	aria-label="main navigation"
+>
 	<div class="container">
 		<div class="navbar-brand">
 			<a class="navbar-item" href="/">
@@ -40,20 +45,31 @@
 		</div>
 
 		<div class="navbar-menu">
-			<div class="navbar-end">
-				{#if hasUser}
+			{#if hasUser}
+				<div class="navbar-start">
+					<a class="navbar-item" href="/todos">To-dos</a>
+				</div>
+			{:else}
+				<div class="navbar-start">
+					<a class="navbar-item" href="/register">Register</a>
+					<a class="navbar-item" href="/login">Login</a>
+				</div>
+			{/if}
+
+			{#if hasUser}
+				<div class="navbar-end">
 					<div class="navbar-item">
 						<p>{$user.username}</p>
 					</div>
 					<div class="navbar-item">
 						<div class="buttons">
-							<button class="button is-small" on:click={handleLogout}>
+							<button class="button is-small is-light" on:click={handleLogout}>
 								Log out
 							</button>
 						</div>
 					</div>
-				{/if}
-			</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 </nav>

@@ -73,7 +73,11 @@
 		<section class="section">
 			<div class="container">
 				<p class="buttons">
-					<button type="submit" class="button is-large is-primary">
+					<button
+						disabled={isLoading}
+						type="submit"
+						class="button is-large is-primary"
+					>
 						<strong>Register</strong>
 					</button>
 					<a class="button is-white" href="/">Back to Home</a>
