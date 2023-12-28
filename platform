@@ -1,0 +1,5 @@
+#!/bin/sh
+
+PLATFORM_VERSION="v0.3.3"
+
+go run "platform.prodigy9.co@$PLATFORM_VERSION" "$@"
