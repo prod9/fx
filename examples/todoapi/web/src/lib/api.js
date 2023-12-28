@@ -14,7 +14,7 @@ export const error = (status, payload) => {
 
 // http methods
 export const get = async (url, { fetch, token }) => {
-	let opts = { method: 'GET', headers: {} }
+	let opts = { method: "GET", headers: {} }
 	if (!!token) {
 		opts.headers["Authorization"] = `Bearer ${token}`;
 	}
@@ -24,6 +24,19 @@ export const get = async (url, { fetch, token }) => {
 
 export const post = async (url, { fetch, token, body }) => {
 	let opts = { method: 'POST', headers: {} }
+	if (!!token) {
+		opts.headers["Authorization"] = `Bearer ${token}`;
+	}
+	if (!!body) {
+		opts.headers["Content-Type"] = "application/json";
+		opts.body = JSON.stringify(body)
+	}
+
+	return await fetch(url, opts)
+}
+
+export const patch = async (url, { fetch, token, body }) => {
+	let opts = { method: 'PATCH', headers: {} }
 	if (!!token) {
 		opts.headers["Authorization"] = `Bearer ${token}`;
 	}

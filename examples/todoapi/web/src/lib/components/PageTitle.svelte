@@ -10,7 +10,15 @@
 <section class="hero is-light">
 	<div class="hero-body">
 		<div class="container">
-			<p class="title">{title}</p>
+			<div class="level">
+				<div class="level-left">
+					<p class="title">{title}</p>
+				</div>
+				<div class="level-right">
+					<slot />
+				</div>
+			</div>
+
 			{#if !!success}
 				<SuccessNotice message={success} />
 			{/if}
