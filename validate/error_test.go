@@ -7,8 +7,8 @@ import (
 )
 
 func TestError_Add(t *testing.T) {
-	dummy := NewFieldError("dummy", "dummy", "dummy")
-	dummy2 := NewFieldError("dummy2", "dummy2", "dummy2")
+	dummy := NewFieldError("dummy", "dummy", "dummy").(*FieldError)
+	dummy2 := NewFieldError("dummy2", "dummy2", "dummy2").(*FieldError)
 
 	var e *Error
 	e = e.Add(dummy)
