@@ -5,7 +5,7 @@ platform = "auto"
 repository = "https://github.com/prod9/fx"
 
 environments = ["fx.prodigy9.co"]
-strategy = "timestamp"
+strategy = "semver"
 
 excludes = [
 	"*.docker",
