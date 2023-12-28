@@ -38,6 +38,14 @@ func Required(field, value string) error {
 	}
 }
 
+func Positive(field string, value int64) error {
+	if value <= 0 {
+		return NewFieldError(field, "must be positive", value)
+	} else {
+		return nil
+	}
+}
+
 func StrLen(field, value string, minLen int) error {
 	if len(strings.TrimSpace(value)) < minLen {
 		return NewFieldError(field, "too short, "+strconv.Itoa(minLen)+" characters required", value)
