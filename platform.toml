@@ -4,7 +4,7 @@ maintainer = "Chakrit Wichian <chakrit@prodigy9.co>"
 platform = "auto"
 repository = "https://github.com/prod9/fx"
 
-environments = []
+environments = ["fx.prodigy9.co"]
 strategy = "timestamp"
 
 excludes = [
