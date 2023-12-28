@@ -76,6 +76,14 @@ func NewScope(ctx context.Context, db *sqlx.DB) (Scope, error) {
 	}
 }
 
+func NewScopeErr(ctx context.Context, outerr *error) (Scope, context.CancelFunc, error) {
+	if scope, err := NewScope(ctx, nil); err != nil {
+		return nil, func() {}, err
+	} else {
+		return scope, func() { scope.End(outerr) }, err
+	}
+}
+
 func IsNoRows(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)
 }
