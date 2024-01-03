@@ -1,4 +1,4 @@
-package objstorage
+package objstore
 
 import (
 	"context"
