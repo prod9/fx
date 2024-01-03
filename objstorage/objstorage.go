@@ -1,4 +1,4 @@
-package cloudstorage
+package objstorage
 
 import (
 	"context"
