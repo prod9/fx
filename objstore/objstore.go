@@ -3,6 +3,7 @@ package objstore
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"fx.prodigy9.co/config"
@@ -10,72 +11,101 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-var (
-	MinioAccessKeyConfig = config.Str("MINIO_ACCESS_KEY")
-	MinioSecretKeyConfig = config.Str("MINIO_SECRET_KEY")
-	MinioEndpointConfig  = config.Str("MINIO_ENDPOINT")
+type StorageClient struct {
+	accessKey string
+	secretKey string
+	url       string
+	bucket    string
+	client    *minio.Client
+}
 
-	client *minio.Client
+var (
+	StorageAccessKeyConfig = config.Str("STORAGE_ACCESS_KEY")
+	StorageSecretKeyConfig = config.Str("STORAGE_SECRET_KEY")
+	StorageURLConfig       = config.Str("STORAGE_URL")
+	StorageBucketConfig    = config.Str("STORAGE_BUCKET_NAME")
+
+	DefaultClient *StorageClient
 )
 
-func connect(cfg *config.Source) (*minio.Client, error) {
-	if client != nil {
-		return client, nil
+func NewClient(cfg *config.Source) *StorageClient {
+	return newS3Client(cfg)
+}
+
+func getDefaultClient() {
+	if DefaultClient == nil {
+		DefaultClient = newS3Client(config.Configure())
+	}
+}
+
+func newS3Client(cfg *config.Source) *StorageClient {
+	if cfg == nil {
+		cfg = config.Configure()
 	}
 
-	minioAccessKey := config.Get(cfg, MinioAccessKeyConfig)
-	minioSecretKey := config.Get(cfg, MinioSecretKeyConfig)
-	minioEndpoint := config.Get(cfg, MinioEndpointConfig)
+	accessKey := config.Get(cfg, StorageAccessKeyConfig)
+	secretKey := config.Get(cfg, StorageSecretKeyConfig)
+	url := config.Get(cfg, StorageURLConfig)
+	bucket := config.Get(cfg, StorageBucketConfig)
 
-	var err error
-	client, err = minio.New(minioEndpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(minioAccessKey, minioSecretKey, ""),
+	client, err := minio.New(url, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: true,
 	})
 	if err != nil {
-		client = nil
-		return nil, err
+		log.Println("objstore: ", err)
 	}
 
-	return client, nil
+	return &StorageClient{
+		accessKey: accessKey,
+		secretKey: secretKey,
+		url:       url,
+		bucket:    bucket,
+		client:    client,
+	}
 }
 
-func GeneratePresignedGetURL(bucket, objectKey string, expiry time.Duration) (string, error) {
-	client, err := connect(config.Configure())
-	if err != nil {
-		return "", fmt.Errorf("failed to initialize cloud client: %v", err)
-	}
+func (s *StorageClient) WithBucket(bucket string) *StorageClient {
+	clone := *s
+	clone.bucket = bucket
+	return &clone
+}
 
-	presignedURL, err := client.PresignedGetObject(context.Background(), bucket, objectKey, expiry, nil)
+func (s *StorageClient) tryGetClient() *StorageClient {
+	if s.client == nil {
+		getDefaultClient()
+		return DefaultClient
+	}
+	return s
+}
+
+func (s *StorageClient) PresignedGetURL(objectKey string, age time.Duration) (string, error) {
+	s = s.tryGetClient()
+
+	presignedURL, err := s.client.PresignedGetObject(context.Background(), s.bucket, objectKey, age, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate presigned URL: %v", err)
+		return "", fmt.Errorf("objstore: %w", err)
 	}
 
 	return presignedURL.String(), nil
 }
 
-func GeneratePresignedPutURL(bucket, objectKey string, expiry time.Duration) (string, error) {
-	client, err := connect(config.Configure())
-	if err != nil {
-		return "", fmt.Errorf("failed to initialize cloud client: %v", err)
-	}
+func (s *StorageClient) PresignedPutURL(objectKey string, age time.Duration) (string, error) {
+	s = s.tryGetClient()
 
-	presignedURL, err := client.PresignedPutObject(context.Background(), bucket, objectKey, expiry)
+	presignedURL, err := s.client.PresignedPutObject(context.Background(), s.bucket, objectKey, age)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate presigned URL: %v", err)
+		return "", fmt.Errorf("objstore: %w", err)
 	}
 
 	return presignedURL.String(), nil
 }
 
-func DeleteObject(bucket, objectKey string) error {
-	client, err := connect(config.Configure())
-	if err != nil {
-		return fmt.Errorf("failed to initialize cloud client: %v", err)
-	}
+func (s *StorageClient) DeleteObject(objectKey string) error {
+	s = s.tryGetClient()
 
-	if err := client.RemoveObject(context.Background(), bucket, objectKey, minio.RemoveObjectOptions{ForceDelete: true}); err != nil {
-		return fmt.Errorf("failed to delete object: %v", err)
+	if err := s.client.RemoveObject(context.Background(), s.bucket, objectKey, minio.RemoveObjectOptions{ForceDelete: true}); err != nil {
+		return fmt.Errorf("objstore: %w", err)
 	}
 
 	return nil
