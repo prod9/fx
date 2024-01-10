@@ -57,7 +57,7 @@ func newS3Client(cfg *config.Source) *Client {
 func (s *Client) tryGetClient() *Client {
 	if s.client == nil {
 		var err error
-		if DefaultClient.client, err = DefaultClient.getMinio(); err != nil {
+		if DefaultClient.client, err = DefaultClient.getClient(); err != nil {
 			log.Println("objstore: ", err)
 		}
 		s = DefaultClient
@@ -65,7 +65,7 @@ func (s *Client) tryGetClient() *Client {
 	return s
 }
 
-func (c *Client) getMinio() (*minio.Client, error) {
+func (c *Client) getClient() (*minio.Client, error) {
 	if c.cfg == nil {
 		c.cfg = config.Configure()
 	}
