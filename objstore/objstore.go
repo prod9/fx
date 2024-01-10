@@ -12,11 +12,8 @@ import (
 )
 
 type StorageClient struct {
-	accessKey string
-	secretKey string
-	url       string
-	bucket    string
-	client    *minio.Client
+	bucket string
+	client *minio.Client
 }
 
 var (
@@ -57,11 +54,8 @@ func newS3Client(cfg *config.Source) *StorageClient {
 	}
 
 	return &StorageClient{
-		accessKey: accessKey,
-		secretKey: secretKey,
-		url:       url,
-		bucket:    bucket,
-		client:    client,
+		bucket: bucket,
+		client: client,
 	}
 }
 
