@@ -54,3 +54,7 @@ func (e *Error) Add(errs ...*FieldError) *Error {
 		return e
 	}
 }
+
+func (e *Error) AddField(field, msg string, value any) *Error {
+	return e.Add(NewFieldError(field, msg, value).(*FieldError))
+}
