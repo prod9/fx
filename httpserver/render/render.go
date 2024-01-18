@@ -2,12 +2,12 @@ package render
 
 import (
 	"encoding/json"
-	"fx.prodigy9.co/errutil"
 	"io"
 	"log"
 	"net/http"
 
 	"fx.prodigy9.co/data"
+	"fx.prodigy9.co/errutil"
 	"fx.prodigy9.co/httpserver/httperrors"
 )
 
@@ -19,12 +19,7 @@ func Text(resp http.ResponseWriter, r *http.Request, text string) {
 	}
 }
 
-func JSON(resp http.ResponseWriter, r *http.Request, obj interface{}, err ...error) {
-	if err != nil && err[0] != nil {
-		Error(resp, r, http.StatusInternalServerError, err[0])
-		return
-	}
-
+func JSON(resp http.ResponseWriter, r *http.Request, obj interface{}) {
 	resp.Header().Set("Content-Type", "application/json")
 	resp.WriteHeader(200)
 	if err := json.NewEncoder(resp).Encode(obj); err != nil {
