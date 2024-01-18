@@ -1,10 +1,10 @@
-package route_resource
+package resources
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"fx.prodigy9.co/structs"
+	"fx.prodigy9.co/contrib/structs"
 	"github.com/ggicci/httpin"
 	"reflect"
 )

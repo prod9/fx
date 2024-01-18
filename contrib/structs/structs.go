@@ -2,7 +2,7 @@ package structs
 
 import (
 	"fmt"
-	"fx.prodigy9.co/reflection"
+	"fx.prodigy9.co/contrib/reflection"
 	"log"
 	"reflect"
 	"strings"

@@ -1,4 +1,4 @@
-package data
+package resources
 
 type ResourceInterface interface {
 	GetTableName() string
