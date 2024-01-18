@@ -3,13 +3,13 @@ package validation
 import (
 	"context"
 	"errors"
-	"fx.prodigy9.co/config"
-	"fx.prodigy9.co/httpserver/render"
-	"fx.prodigy9.co/validation"
-	"github.com/ggicci/httpin"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"reflect"
+
+	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/httpserver/render"
+	"github.com/ggicci/httpin"
+	"github.com/go-chi/chi/v5"
 )
 
 /**
@@ -20,10 +20,10 @@ import (
  */
 
 // Validator adds a validator to the request
-func Validator(cfg *config.Source) func(http.Handler) http.Handler {
-	val := &validation.Validator{}
+func Middleware(cfg *config.Source) func(http.Handler) http.Handler {
+	val := &Validator{}
 	val.Init()
-	val.AddTranslations(validation.Translations{
+	val.AddTranslations(Translations{
 		"required":             "{0} is required",
 		"required_if":          "{0} is required",
 		"required_with":        "{0} is required",
@@ -45,7 +45,7 @@ func Validator(cfg *config.Source) func(http.Handler) http.Handler {
 }
 
 // executor will validate a struct field marked with the "validator" tag
-func executor(val *validation.Validator) func(ctx *httpin.DirectiveContext) error {
+func executor(val *Validator) func(ctx *httpin.DirectiveContext) error {
 	return func(ctx *httpin.DirectiveContext) error {
 		action := ctx.Request.Header.Get("x-api-action")
 		if field := ctx.Value.Elem().FieldByName("Action"); field != (reflect.Value{}) {
@@ -85,7 +85,7 @@ func requestToStruct(form interface{}) func(http.Handler) http.Handler {
 func structValidator(form interface{}) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			val := req.Context().Value("validator").(*validation.Validator)
+			val := req.Context().Value("validator").(*Validator)
 			input := req.Context().Value(httpin.Input)
 
 			action := req.Header.Get("x-api-action")
@@ -106,11 +106,11 @@ func structValidator(form interface{}) func(http.Handler) http.Handler {
 }
 
 // ValidationMessage will set the translations for the current app overwriting existing ones
-func ValidationMessage(translations validation.Translations) func(cfg *config.Source) func(http.Handler) http.Handler {
+func ValidationMessage(translations Translations) func(cfg *config.Source) func(http.Handler) http.Handler {
 	return func(cfg *config.Source) func(http.Handler) http.Handler {
 		return func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-				val := req.Context().Value("validator").(*validation.Validator)
+				val := req.Context().Value("validator").(*Validator)
 				val.AddTranslations(translations)
 				ctx := context.WithValue(req.Context(), "validator", val)
 				next.ServeHTTP(rw, req.WithContext(ctx))
