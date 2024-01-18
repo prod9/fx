@@ -1,12 +1,13 @@
 package validation
 
 import (
-	"fx.prodigy9.co/errutil"
+	"reflect"
+
+	"fx.prodigy9.co/validate"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	entranslations "github.com/go-playground/validator/v10/translations/en"
-	"reflect"
 )
 
 type Translations map[string]string
@@ -50,7 +51,7 @@ func (v *Validator) addTranslation(name, message string) {
 
 // Validate validates a struct with go validator and formats the errors
 func (v *Validator) Validate(value interface{}, valueType reflect.Type) error {
-	errs := errutil.ValidationErrors{}
+	errs := &validate.Error{}
 	err := v.Validator.Struct(value)
 
 	if err == nil {
@@ -59,16 +60,17 @@ func (v *Validator) Validate(value interface{}, valueType reflect.Type) error {
 
 	for _, err := range err.(validator.ValidationErrors) {
 		if field, ok := valueType.FieldByName(err.Field()); ok {
-			errs = errs.AddError(errutil.ValidationError{
-				Field:   field.Tag.Get("json"),
-				Message: err.Translate(v.Translator),
-				Value:   err.Value(),
-			})
+			errs = errs.AddField(
+				field.Tag.Get("json"),
+				err.Translate(v.Translator),
+				err.Value(),
+			)
 		}
 	}
 
-	if errs.Size() == 0 {
+	if errs.Len() == 0 {
 		return nil
+	} else {
+		return errs
 	}
-	return errs
 }
