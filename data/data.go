@@ -87,31 +87,3 @@ func NewScopeErr(ctx context.Context, outerr *error) (Scope, context.CancelFunc,
 func IsNoRows(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)
 }
-
-func Get(ctx context.Context, out any, sql string, args ...any) (err error) {
-	return Run(ctx, func(s Scope) error {
-		return s.Get(out, sql, args...)
-	})
-}
-
-func Select(ctx context.Context, out any, sql string, args ...any) (err error) {
-	return Run(ctx, func(s Scope) error {
-		return s.Select(out, sql, args...)
-	})
-}
-
-func Exec(ctx context.Context, sql string, args ...any) error {
-	return Run(ctx, func(s Scope) error {
-		return s.Exec(sql, args...)
-	})
-}
-
-func Run(ctx context.Context, action func(s Scope) error) (err error) {
-	var scope Scope
-	if scope, err = NewScope(ctx, nil); err != nil {
-		return
-	} else {
-		defer scope.End(&err)
-		return action(scope)
-	}
-}
