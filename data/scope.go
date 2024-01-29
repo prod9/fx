@@ -14,9 +14,13 @@ type (
 		// End ends the scope. It is meant to be used inside a `defer` statement.
 		End(*error)
 
-		Exec(sql string, args ...interface{}) error
 		Get(dest interface{}, sql string, args ...interface{}) error
 		Select(dest interface{}, sql string, args ...interface{}) error
+		Exec(sql string, args ...interface{}) error
+
+		GetSQL(interface{}, SQLGenerator) error
+		SelectSQL(interface{}, SQLGenerator) error
+		ExecSQL(SQLGenerator) error
 	}
 
 	txKey struct{}
@@ -78,15 +82,26 @@ func (s scopeImpl) End(err *error) {
 	}
 }
 
+func (s scopeImpl) Get(dest interface{}, sql string, args ...interface{}) error {
+	return s.tx.GetContext(s.ctx, dest, sql, args...)
+}
+func (s scopeImpl) Select(dest interface{}, sql string, args ...interface{}) error {
+	return s.tx.SelectContext(s.ctx, dest, sql, args...)
+}
 func (s scopeImpl) Exec(sql string, args ...interface{}) error {
 	_, err := s.tx.ExecContext(s.ctx, sql, args...)
 	return err
 }
 
-func (s scopeImpl) Get(dest interface{}, sql string, args ...interface{}) error {
-	return s.tx.GetContext(s.ctx, dest, sql, args...)
+func (s scopeImpl) GetSQL(out interface{}, sqlgen SQLGenerator) (err error) {
+	sql, args := sqlgen.Sql()
+	return s.Get(out, sql, args...)
 }
-
-func (s scopeImpl) Select(dest interface{}, sql string, args ...interface{}) error {
-	return s.tx.SelectContext(s.ctx, dest, sql, args...)
+func (s scopeImpl) SelectSQL(out interface{}, sqlgen SQLGenerator) (err error) {
+	sql, args := sqlgen.Sql()
+	return s.Select(out, sql, args...)
+}
+func (s scopeImpl) ExecSQL(sqlgen SQLGenerator) (err error) {
+	sql, args := sqlgen.Sql()
+	return s.Exec(sql, args...)
 }
