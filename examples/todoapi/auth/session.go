@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"fx.prodigy9.co/data"
+	. "fx.prodigy9.co/examples/todoapi/gen/todoapi/public/table"
+	"github.com/go-jet/jet/v2/postgres"
 )
 
 const SessionTokenBytes = 32
@@ -36,8 +38,12 @@ func GetSessionByToken(ctx context.Context, token string) (sess *Session, err er
 		return nil, err
 	}
 
-	sess, sql := &Session{}, `SELECT * FROM sessions WHERE token = $1 LIMIT 1`
-	if err = scope.Get(sess, sql, token); err != nil {
+	sess = &Session{}
+	if err = scope.GetSQL(sess, Sessions.
+		SELECT(Sessions.AllColumns).
+		WHERE(Sessions.Token.EQ(postgres.String(token))).
+		LIMIT(1),
+	); err != nil {
 		return nil, err
 	} else {
 		return sess, nil

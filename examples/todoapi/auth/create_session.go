@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"fx.prodigy9.co/data"
+	. "fx.prodigy9.co/examples/todoapi/gen/todoapi/public/table"
 	"fx.prodigy9.co/validate"
+	"github.com/go-jet/jet/v2/postgres"
 )
 
 type CreateSession struct {
@@ -47,12 +49,16 @@ func (c *CreateSession) Execute(ctx context.Context, out any) (err error) {
 		return err
 	}
 
-	sql := `
-		INSERT INTO sessions (user_id, token, expires_at)
-		VALUES ($1, $2, $3)
-		RETURNING *`
-	return scope.Get(out, sql,
-		user.ID,
-		token,
-		time.Now().Add(DefaultSessionAge))
+	return scope.GetSQL(out, Sessions.
+		INSERT(
+			Sessions.UserID,
+			Sessions.Token,
+			Sessions.ExpiresAt).
+		VALUES(
+			user.ID,
+			token,
+			time.Now().Add(DefaultSessionAge),
+		).
+		RETURNING(postgres.STAR),
+	)
 }
