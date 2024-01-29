@@ -2,9 +2,12 @@ package auth
 
 import (
 	"context"
+	"time"
 
 	"fx.prodigy9.co/data"
+	. "fx.prodigy9.co/examples/todoapi/gen/todoapi/public/table"
 	"fx.prodigy9.co/validate"
+	"github.com/go-jet/jet/v2/postgres"
 )
 
 type DestroySession struct {
@@ -19,10 +22,10 @@ func (c *DestroySession) Validate() error {
 }
 
 func (c *DestroySession) Execute(ctx context.Context, out any) (err error) {
-	sql := `
-		UPDATE sessions
-		SET expires_at = CURRENT_TIMESTAMP
-		WHERE token = $1
-		RETURNING *`
-	return data.Get(ctx, out, sql, c.Token)
+	return data.GetSQL(ctx, out, Sessions.
+		UPDATE(Sessions.ExpiresAt).
+		SET(Sessions.ExpiresAt, time.Now()).
+		WHERE(Sessions.Token.EQ(postgres.String(c.Token))).
+		RETURNING(postgres.STAR),
+	)
 }

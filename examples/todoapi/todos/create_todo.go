@@ -5,8 +5,10 @@ import (
 
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/examples/todoapi/auth"
+	. "fx.prodigy9.co/examples/todoapi/gen/todoapi/public/table"
 	"fx.prodigy9.co/httpserver/httperrors"
 	"fx.prodigy9.co/validate"
+	"github.com/go-jet/jet/v2/postgres"
 )
 
 type CreateTodo struct {
@@ -30,9 +32,16 @@ func (c *CreateTodo) Execute(ctx context.Context, out any) (err error) {
 		return httperrors.ErrUnauthorized
 	}
 
-	sql := `
-		INSERT INTO todos (user_id, title, description)
-		VALUES ($1, $2, $3)
-		RETURNING *`
-	return scope.Get(out, sql, user.ID, c.Title, c.Description)
+	return scope.GetSQL(out, Todos.
+		INSERT(
+			Todos.UserID,
+			Todos.Title,
+			Todos.Description).
+		VALUES(
+			user.ID,
+			c.Title,
+			c.Description,
+		).
+		RETURNING(postgres.STAR),
+	)
 }

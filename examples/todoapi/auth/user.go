@@ -5,11 +5,13 @@ import (
 	"time"
 
 	"fx.prodigy9.co/data"
+	. "fx.prodigy9.co/examples/todoapi/gen/todoapi/public/table"
 	"fx.prodigy9.co/passwords"
+	"github.com/go-jet/jet/v2/postgres"
 )
 
 type User struct {
-	ID           int64     `json:"id" db:"id"`
+	ID           int64     `json:"id" db:"id,users.id"`
 	Username     string    `json:"username" db:"username"`
 	PasswordHash string    `json:"-" db:"password_hash"`
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`
@@ -17,7 +19,11 @@ type User struct {
 
 func GetUserByID(ctx context.Context, id int64) (*User, error) {
 	user := &User{}
-	if err := data.Get(ctx, user, `SELECT * FROM users WHERE id = $1 LIMIT 1`, id); err != nil {
+	if err := data.GetSQL(ctx, user, Users.
+		SELECT(Users.AllColumns).
+		WHERE(Users.ID.EQ(postgres.Int64(id))).
+		LIMIT(1),
+	); err != nil {
 		return nil, err
 	} else {
 		return user, nil
@@ -26,7 +32,11 @@ func GetUserByID(ctx context.Context, id int64) (*User, error) {
 
 func GetUserByUsername(ctx context.Context, username string) (*User, error) {
 	user := &User{}
-	if err := data.Get(ctx, user, `SELECT * FROM users WHERE username = $1 LIMIT 1`, username); err != nil {
+	if err := data.GetSQL(ctx, user, Users.
+		SELECT(Users.AllColumns).
+		WHERE(Users.Username.EQ(postgres.String(username))).
+		LIMIT(1),
+	); err != nil {
 		return nil, err
 	} else {
 		return user, nil

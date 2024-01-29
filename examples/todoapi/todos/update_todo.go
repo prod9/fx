@@ -3,11 +3,14 @@ package todos
 import (
 	"context"
 	"errors"
+	"time"
 
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/examples/todoapi/auth"
+	. "fx.prodigy9.co/examples/todoapi/gen/todoapi/public/table"
 	"fx.prodigy9.co/httpserver/httperrors"
 	"fx.prodigy9.co/validate"
+	"github.com/go-jet/jet/v2/postgres"
 )
 
 type UpdateTodo struct {
@@ -49,19 +52,26 @@ func (u *UpdateTodo) Execute(ctx context.Context, out any) (err error) {
 	}
 
 	// otherwise, update todo to be completed (or not)
-	var sql string
+	var sql data.SQLGenerator
 	if u.Completed {
-		sql = `
-			UPDATE todos
-			SET completed_at = CURRENT_TIMESTAMP
-			WHERE user_id = $1 AND id = $2
-			RETURNING *`
+		sql = Todos.
+			UPDATE(Todos.CompletedAt).
+			SET(Todos.CompletedAt.SET(postgres.TimestampzT(time.Now()))).
+			WHERE(
+				Todos.UserID.EQ(postgres.Int64(user.ID)).
+					AND(Todos.ID.EQ(postgres.Int64(u.ID))),
+			).
+			RETURNING(postgres.STAR)
 	} else {
-		sql = `
-			UPDATE todos
-			SET completed_at = NULL
-			WHERE user_id = $1 AND id = $2
-			RETURNING *`
+		sql = Todos.
+			UPDATE(Todos.CompletedAt).
+			SET(Todos.CompletedAt.SET(nil)).
+			WHERE(
+				Todos.UserID.EQ(postgres.Int64(user.ID)).
+					AND(Todos.ID.EQ(postgres.Int64(u.ID))),
+			).
+			RETURNING(postgres.STAR)
 	}
-	return scope.Get(out, sql, user.ID, u.ID)
+
+	return scope.GetSQL(out, sql)
 }

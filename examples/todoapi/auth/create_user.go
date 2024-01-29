@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"fx.prodigy9.co/data"
+	. "fx.prodigy9.co/examples/todoapi/gen/todoapi/public/table"
 	"fx.prodigy9.co/passwords"
 	"fx.prodigy9.co/validate"
+	"github.com/go-jet/jet/v2/postgres"
 )
 
 type CreateUser struct {
@@ -32,6 +34,14 @@ func (c *CreateUser) Execute(ctx context.Context, out any) (err error) {
 	var pwdhash string
 	pwdhash, err = passwords.Hash(c.Password)
 
-	sql := `INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING *`
-	return scope.Get(out, sql, c.Username, pwdhash)
+	return scope.GetSQL(out, Users.
+		INSERT(
+			Users.Username,
+			Users.PasswordHash).
+		VALUES(
+			c.Username,
+			pwdhash,
+		).
+		RETURNING(postgres.STAR),
+	)
 }
