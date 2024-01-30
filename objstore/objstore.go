@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -137,7 +138,7 @@ func (s *Client) initMinio() error {
 	accessKey := s3url.User.Username()
 	secretKey, hasSecretKey := s3url.User.Password()
 	endpoint := s3url.Host
-	bucket := s3url.Path
+	bucket := strings.TrimPrefix(s3url.Path, "/")
 	if accessKey == "" && !hasSecretKey {
 		return errors.New("objstore: access key or secret key not configured")
 	}
