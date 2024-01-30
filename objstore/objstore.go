@@ -22,13 +22,14 @@ var (
 func PresignedGetURL(ctx context.Context, key string, age time.Duration) (string, error) {
 	return DefaultClient.PresignedGetURL(ctx, key, age)
 }
-
 func PresignedPutURL(ctx context.Context, key string, age time.Duration) (string, error) {
 	return DefaultClient.PresignedPutURL(ctx, key, age)
 }
-
 func DeleteObject(ctx context.Context, key string) error {
 	return DefaultClient.DeleteObject(ctx, key)
+}
+func ForceDeleteObject(ctx context.Context, key string) error {
+	return DefaultClient.ForceDeleteObject(ctx, key)
 }
 
 type Client struct {
@@ -83,9 +84,25 @@ func (s *Client) DeleteObject(ctx context.Context, key string) error {
 		ctx = context.Background()
 	}
 
+	opts := minio.RemoveObjectOptions{}
 	if client, err := s.tryGetMinio(); err != nil {
 		return err
-	} else if err := client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{}); err != nil {
+	} else if err := client.RemoveObject(ctx, s.bucket, key, opts); err != nil {
+		return fmt.Errorf("objstore: %w", err)
+	} else {
+		return nil
+	}
+}
+
+func (s *Client) ForceDeleteObject(ctx context.Context, key string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	opts := minio.RemoveObjectOptions{ForceDelete: true}
+	if client, err := s.tryGetMinio(); err != nil {
+		return err
+	} else if err := client.RemoveObject(ctx, s.bucket, key, opts); err != nil {
 		return fmt.Errorf("objstore: %w", err)
 	} else {
 		return nil
