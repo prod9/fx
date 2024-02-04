@@ -7,6 +7,7 @@ import (
 
 	"fx.prodigy9.co/app"
 	"fx.prodigy9.co/data"
+	pager "fx.prodigy9.co/data/page"
 )
 
 var App = app.Build().
@@ -51,15 +52,16 @@ func GetTodo(ctx context.Context, userID, id int64) (*Todo, error) {
 	return todo, err
 }
 
-func GetTodosByUserID(ctx context.Context, userID int64) ([]*Todo, error) {
-	var todos []*Todo
+func GetTodosByUserID(ctx context.Context, page pager.Meta, userID int64) (*pager.Page[*Todo], error) {
 	sql := `
 		SELECT *
 		FROM todos
 		WHERE user_id = $1
 		ORDER BY id ASC`
-	err := data.Select(ctx, &todos, sql, userID)
-	return todos, err
+
+	out := &pager.Page[*Todo]{}
+	err := pager.Select(ctx, out, page, sql, userID)
+	return out, err
 }
 
 func DeleteTodo(ctx context.Context, userID, id int64) (*Todo, error) {

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"fx.prodigy9.co/config"
+	pager "fx.prodigy9.co/data/page"
 	"fx.prodigy9.co/examples/todoapi/auth"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/httperrors"
@@ -27,8 +28,8 @@ func (c Ctr) Mount(cfg *config.Source, router chi.Router) error {
 }
 
 func (c Ctr) Index(resp http.ResponseWriter, req *http.Request) {
-	user := auth.UserFromContext(req.Context())
-	if todos, err := GetTodosByUserID(req.Context(), user.ID); err != nil {
+	page, user := pager.FromRequest(req), auth.UserFromContext(req.Context())
+	if todos, err := GetTodosByUserID(req.Context(), page, user.ID); err != nil {
 		render.Error(resp, req, 500, err)
 	} else {
 		render.JSON(resp, req, todos)
