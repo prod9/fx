@@ -5,12 +5,16 @@
 
 	import ModalNewTodo from "../../lib/components/ModalNewTodo.svelte";
 	import PageTitle from "../../lib/components/PageTitle.svelte";
+	import SelectPage from "../../lib/components/SelectPage.svelte";
 
 	export let data;
 
 	let newTodoOpen = false;
 	let updatedTodo = null;
 	let todos = data?.todos ?? [];
+
+	let page = todos.page;
+	$: maxPage = todos.total_pages;
 
 	let error = "";
 	let isLoading = false;
@@ -19,7 +23,7 @@
 		newTodoOpen = false;
 		isLoading = true;
 
-		let response = await get("/api/todos", { fetch });
+		let response = await get("/api/todos?page=" + page.toString(), { fetch });
 		let payload = await response.json();
 		isLoading = false;
 		if (!response.ok) {
@@ -47,8 +51,14 @@
 	const handleTodoCreated = async (todo) => {
 		newTodoOpen = false;
 		updatedTodo = todo;
-		todos.push(todo);
-		todos = todos;
+
+		if (todos.data.length == todos.rows_per_page) {
+			// if current page is full, the new todo would show up on a new page
+			maxPage = todos.total_pages + 1;
+		}
+
+		page = maxPage;
+		todos = await loadTodos();
 	};
 
 	const handleCompleteTodo = async (todo, completed) => {
@@ -67,10 +77,10 @@
 		}
 
 		error = "";
-		for (let i = 0; i < todos.length; i++) {
-			if (todos[i].id === payload.id) {
-				todos[i] = payload;
-				updatedTodo = todos[i];
+		for (let i = 0; i < todos.data.length; i++) {
+			if (todos.data[i].id === payload.id) {
+				todos.data[i] = payload;
+				updatedTodo = payload;
 				return;
 			}
 		}
@@ -86,29 +96,29 @@
 			return;
 		}
 
-		error = "";
-		for (let i = 0; i < todos.length; i++) {
-			if (todos[i].id === payload.id) {
-				todos.splice(i, 1);
-				todos = todos;
-				return;
-			}
-		}
+		todos = await loadTodos();
 	};
 </script>
 
 <PageTitle title="Todos" {error} success={data?.success}>
-	<div class="buttons">
-		<button disabled={isLoading} on:click={handleRefresh} class="button">
-			Refresh
-		</button>
-		<button
-			disabled={isLoading}
-			on:click={handleNewTodo}
-			class="button is-success"
-		>
-			Add Todo
-		</button>
+	<div class="field is-grouped">
+		<div class="control">
+			<SelectPage bind:page bind:maxPage onChange={handleRefresh} />
+		</div>
+		<div class="control">
+			<button disabled={isLoading} on:click={handleRefresh} class="button">
+				Refresh
+			</button>
+		</div>
+		<div class="control">
+			<button
+				disabled={isLoading}
+				on:click={handleNewTodo}
+				class="button is-success"
+			>
+				Add Todo
+			</button>
+		</div>
 	</div>
 </PageTitle>
 
@@ -121,7 +131,7 @@
 				<tr><th>Task</th><th>Completed</th><th>Actions</th></tr>
 			</thead>
 			<tbody>
-				{#each todos as todo}
+				{#each todos.data as todo}
 					<tr class:is-selected={todo.id === updatedTodo?.id}>
 						<td>
 							<p><strong>{todo.title}</strong></p>

@@ -1,9 +1,15 @@
 import { get, post, patch, error, json } from '$lib/api.js';
 import { backendApiPrefix } from '$lib/server.js';
 
-export async function GET({ cookies, fetch }) {
+export async function GET({ url, cookies, fetch }) {
+	let page = parseInt(url.searchParams.get('page'), 10);
+	if (isNaN(page) || page < 1) {
+		page = 1
+	}
+
 	let token = cookies.get('session');
-	let response = await get(backendApiPrefix() + '/todos', { fetch, token })
+	let path = backendApiPrefix() + '/todos?per_page=5&page=' + page;
+	let response = await get(path, { fetch, token })
 
 	let payload = await response.json();
 	if (!response.ok) {
