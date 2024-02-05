@@ -6,11 +6,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/joho/godotenv"
 )
 
-const DotEnvSearchLimit = 5
+const DotEnvSearchLimit = 4
 
 var defaultSource *Source = &Source{}
 
@@ -66,7 +67,6 @@ func findDotEnvs() ([]string, error) {
 	}
 
 	for n := 0; n < DotEnvSearchLimit; n++ {
-		dotgit := filepath.Join(wd, ".git")
 		dotenv := filepath.Join(wd, ".env")
 		dotenvlocal := filepath.Join(wd, ".env.local")
 
@@ -85,6 +85,7 @@ func findDotEnvs() ([]string, error) {
 			envs = append(envs, dotenv)
 		}
 
+		dotgit := filepath.Join(wd, ".git")
 		if _, err := os.Stat(dotgit); !errors.Is(err, fs.ErrNotExist) {
 			// we found a .git, most likely project's root so we stop here
 			break
@@ -93,5 +94,7 @@ func findDotEnvs() ([]string, error) {
 		}
 	}
 
+	// reverse so it's in Overload-able order
+	slices.Reverse(envs)
 	return envs, nil
 }
