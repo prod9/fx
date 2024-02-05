@@ -67,8 +67,8 @@ func findDotEnvs() ([]string, error) {
 
 	for n := 0; n < DotEnvSearchLimit; n++ {
 		dotgit := filepath.Join(wd, ".git")
-		dotenv := filepath.Join(wd, ".env.local")
-		dotenvlocal := filepath.Join(wd, ".env")
+		dotenv := filepath.Join(wd, ".env")
+		dotenvlocal := filepath.Join(wd, ".env.local")
 
 		if _, err := os.Stat(dotenvlocal); err != nil {
 			if !errors.Is(err, fs.ErrNotExist) {
