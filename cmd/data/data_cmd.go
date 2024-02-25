@@ -16,5 +16,6 @@ func init() {
 		psqlCmd,
 		recoverMigrationCmd,
 		rollbackCmd,
+		syncMigrationsCmd,
 	)
 }
