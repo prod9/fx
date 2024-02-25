@@ -50,7 +50,9 @@ func LoadMigrations(dir string) (result []Migration, err error) {
 	err = filepath.WalkDir(dir, func(path string, info os.DirEntry, err error) error {
 		if info.IsDir() {
 			if strings.ToLower(info.Name()) == ".git" ||
-				strings.ToLower(info.Name()) == "node_modules" {
+				strings.ToLower(info.Name()) == "node_modules" ||
+				strings.ToLower(info.Name()) == "vendor" ||
+				strings.ToLower(info.Name()) == "examples" {
 				return filepath.SkipDir
 			} else {
 				return nil
