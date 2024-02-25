@@ -10,6 +10,7 @@ import (
 
 	"github.com/chakrit/gendiff"
 	"github.com/gobuffalo/flect"
+	"github.com/jmoiron/sqlx"
 )
 
 type Migration struct {
@@ -44,6 +45,11 @@ func MigrationPath(dir, name string) (string, string, error) {
 	}
 
 	return uppath, downpath, nil
+}
+
+func RecoverMigrations(db *sqlx.DB) (migrations []Migration, err error) {
+	err = db.Select(&migrations, ListMigrationsSQL)
+	return
 }
 
 func LoadMigrations(dir string) (result []Migration, err error) {

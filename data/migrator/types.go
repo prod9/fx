@@ -14,15 +14,8 @@ const (
 	ActionIgnore
 	// ActionPrune prunes missing migration entries from the database
 	ActionPrune
-	// Exports the migration content from the database to a file
-	// TODO: ActionExport
-	//   This would be a different mode for `ActionPrune` so we'll need a switch
-	//   for user to specify which action they want for migrations that is in
-	//   the database but is missing from the filesystem. IMO This is a better
-	//   default option than simply pruning as well. Also, if the switch is on,
-	//   ActionUpdate should result in updating the filesystem from the DB rather
-	//   than the other way around.
-
+	// Recover the migration content from the database to a file
+	ActionRecover
 	// ActionMigrate runs all migrations that are yet to be ran
 	ActionMigrate
 	// ActionRollback rollbacks the most recent migration
@@ -37,6 +30,8 @@ func (act Action) String() string {
 		return "ignore"
 	case ActionPrune:
 		return "remove"
+	case ActionRecover:
+		return "recover"
 	case ActionMigrate:
 		return "migrate"
 	case ActionRollback:
@@ -49,6 +44,7 @@ func (act Action) String() string {
 type Intent int
 
 const (
+	// TODO: IntentRecover ?
 	IntentSync = Intent(iota)
 	IntentMigrate
 	IntentRollback

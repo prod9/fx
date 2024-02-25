@@ -219,6 +219,11 @@ func (m *Migrator) Apply(ctx context.Context, plan Plan) (err error) {
 			return
 		}
 
+	case ActionRecover:
+		// TODO: Probably need to re-architect a bit and make plan self-execute instead
+		//   of switching on Action here. Adding I/O code here feels wrong.
+		return fmt.Errorf("recover plan must be manually implemented")
+
 	case ActionMigrate:
 		if err = scope.Exec(UpdateMigrationSQL, mig.Name, mig.UpSQL, mig.DownSQL); err != nil {
 			return
