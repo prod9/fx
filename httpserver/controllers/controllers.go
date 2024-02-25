@@ -50,7 +50,13 @@ func ReadAction(r *http.Request, act Action) error {
 func ExecuteAction(resp http.ResponseWriter, r *http.Request, act Action, out any) error {
 	if err := ReadAction(r, act); err != nil {
 		return err
-	} else if err := act.Execute(r.Context(), out); err != nil {
+	}
+	if val, ok := act.(Validator); ok {
+		if err := val.Validate(); err != nil {
+			return err
+		}
+	}
+	if err := act.Execute(r.Context(), out); err != nil {
 		return err
 	} else {
 		return nil
