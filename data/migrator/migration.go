@@ -2,10 +2,10 @@ package migrator
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/chakrit/gendiff"
@@ -47,46 +47,63 @@ func MigrationPath(dir, name string) (string, string, error) {
 }
 
 func LoadMigrations(dir string) (result []Migration, err error) {
-	files, err := filepath.Glob(filepath.Clean(dir) + "/*" + UpExt)
-	if err != nil {
-		return nil, err
-	}
-	nestedFiles, err := filepath.Glob(filepath.Clean(dir) + "/*/*" + UpExt)
-	if err != nil {
-		return nil, err
-	}
-	files = append(files, nestedFiles...)
-
-	var migration Migration
-	for _, path := range files {
-		basename := filepath.Base(path)
-		dirname := filepath.Dir(path)
-
-		downfile := path[:len(path)-len(UpExt)] + DownExt
-		migration.Name = basename[:len(basename)-len(UpExt)]
-
-		if _, err := os.Stat(downfile); os.IsNotExist(err) {
-			return nil, fmt.Errorf("missing down migration: %s", downfile)
+	err = filepath.WalkDir(dir, func(path string, info os.DirEntry, err error) error {
+		if info.IsDir() {
+			if strings.ToLower(info.Name()) == ".git" ||
+				strings.ToLower(info.Name()) == "node_modules" {
+				return filepath.SkipDir
+			} else {
+				return nil
+			}
 		}
 
-		if bytes, err := ioutil.ReadFile(path); err != nil {
-			return nil, fmt.Errorf("i/o: %w", err)
-		} else {
-			migration.UpSQL = string(bytes)
+		matched, err := filepath.Match("*"+UpExt, info.Name())
+		if err != nil {
+			return err
+		} else if !matched {
+			return nil
 		}
 
-		if bytes, err := ioutil.ReadFile(downfile); err != nil {
-			return nil, fmt.Errorf("i/o: %w", err)
-		} else {
-			migration.DownSQL = string(bytes)
+		migration, err := loadOneMigration(path)
+		if err != nil {
+			return err
 		}
 
-		migration.Dir = dirname
 		result = append(result, migration)
-	}
+		return nil
+	})
 
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name
 	})
 	return
+}
+
+func loadOneMigration(path string) (Migration, error) {
+	var (
+		basename  = filepath.Base(path)
+		dirname   = filepath.Dir(path)
+		downfile  = path[:len(path)-len(UpExt)] + DownExt
+		migration = Migration{
+			Name: basename[:len(basename)-len(UpExt)],
+		}
+	)
+
+	if _, err := os.Stat(downfile); os.IsNotExist(err) {
+		return Migration{}, fmt.Errorf("migrator: missing down migration: %s", downfile)
+	}
+	if bytes, err := os.ReadFile(path); err != nil {
+		return Migration{}, fmt.Errorf("migrator: %w", err)
+	} else {
+		migration.UpSQL = string(bytes)
+	}
+
+	if bytes, err := os.ReadFile(downfile); err != nil {
+		return Migration{}, fmt.Errorf("migrator: %w", err)
+	} else {
+		migration.DownSQL = string(bytes)
+	}
+
+	migration.Dir = dirname
+	return migration, nil
 }
