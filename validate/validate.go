@@ -50,6 +50,13 @@ func Positive(field string, value int64) error {
 		return nil
 	}
 }
+func NonNegative(field string, value int64) error {
+	if value < 0 {
+		return NewFieldError(field, "must be 0 or higher", value)
+	} else {
+		return nil
+	}
+}
 
 func StrLen(field, value string, minLen int) error {
 	if len(strings.TrimSpace(value)) < minLen {
