@@ -3,6 +3,7 @@ package validate
 import (
 	"strconv"
 	"strings"
+	"time"
 )
 
 func Multi(errs ...error) error {
@@ -57,6 +58,14 @@ func StrLen(field, value string, minLen int) error {
 func FieldsMatch(field1, value1, field2, value2 string) error {
 	if value1 != value2 {
 		return NewFieldError(field2, "does not match", value1)
+	} else {
+		return nil
+	}
+}
+
+func TimeRequired(field string, value time.Time) error {
+	if value.IsZero() {
+		return NewFieldError(field, "missing", value)
 	} else {
 		return nil
 	}
