@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,19 +10,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type (
-	Interface interface {
-		Mount(cfg *config.Source, router chi.Router) error
-	}
-
-	// standalone action
-	Validator interface {
-		Validate() error
-	}
-	Action interface {
-		Execute(ctx context.Context, out any) error
-	}
-)
+type Interface interface {
+	Mount(cfg *config.Source, router chi.Router) error
+}
 
 func ReadJSON(r *http.Request, obj interface{}) error {
 	err := json.NewDecoder(r.Body).Decode(obj)
@@ -31,36 +20,6 @@ func ReadJSON(r *http.Request, obj interface{}) error {
 		return fmt.Errorf("read json: %w", err)
 	}
 	return nil
-}
-
-func ReadAction(r *http.Request, act Action) error {
-	if err := ReadJSON(r, act); err != nil {
-		return err
-	}
-
-	if val, ok := act.(Validator); ok {
-		if err := val.Validate(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func ExecuteAction(resp http.ResponseWriter, r *http.Request, act Action, out any) error {
-	if err := ReadAction(r, act); err != nil {
-		return err
-	}
-	if val, ok := act.(Validator); ok {
-		if err := val.Validate(); err != nil {
-			return err
-		}
-	}
-	if err := act.Execute(r.Context(), out); err != nil {
-		return err
-	} else {
-		return nil
-	}
 }
 
 // Static creates a controllers.Interface that simply renders the given object as JSON on
