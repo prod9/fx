@@ -70,3 +70,19 @@ func TimeRequired(field string, value time.Time) error {
 		return nil
 	}
 }
+
+func TimeBefore(field string, value time.Time, field2 string, value2 time.Time) error {
+	if !value.Before(value2) {
+		return NewFieldError(field, "must be before "+field2, value)
+	} else {
+		return nil
+	}
+}
+
+func TimeAfter(field string, value time.Time, field2 string, value2 time.Time) error {
+	if !value.After(value2) {
+		return NewFieldError(field, "must be after "+field2, value)
+	} else {
+		return nil
+	}
+}
