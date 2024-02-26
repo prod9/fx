@@ -17,10 +17,14 @@ func Multi(errs ...error) error {
 			continue
 		}
 
-		if fieldErr, ok := err.(*FieldError); !ok {
-			panic("validate.Multi: errors must all be *FieldError")
-		} else {
+		if valErr, ok := err.(*Error); ok {
+			for _, fieldErrs := range valErr.Fields {
+				outerr = outerr.Add(fieldErrs...)
+			}
+		} else if fieldErr, ok := err.(*FieldError); ok {
 			outerr = outerr.Add(fieldErr)
+		} else {
+			panic("validate.Multi: errors must all be *Error or *FieldError")
 		}
 	}
 
