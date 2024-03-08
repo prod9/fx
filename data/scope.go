@@ -17,10 +17,12 @@ type (
 		Get(dest interface{}, sql string, args ...interface{}) error
 		Select(dest interface{}, sql string, args ...interface{}) error
 		Exec(sql string, args ...interface{}) error
+		Prepare(query string) (*sqlx.Stmt, error)
 
 		GetSQL(interface{}, SQLGenerator) error
 		SelectSQL(interface{}, SQLGenerator) error
 		ExecSQL(SQLGenerator) error
+		PrepareSQL(SQLGenerator) (*sqlx.Stmt, error)
 	}
 
 	txKey struct{}
@@ -92,6 +94,9 @@ func (s scopeImpl) Exec(sql string, args ...interface{}) error {
 	_, err := s.tx.ExecContext(s.ctx, sql, args...)
 	return err
 }
+func (s scopeImpl) Prepare(query string) (*sqlx.Stmt, error) {
+	return s.tx.Preparex(query)
+}
 
 func (s scopeImpl) GetSQL(out interface{}, sqlgen SQLGenerator) (err error) {
 	sql, args := sqlgen.Sql()
@@ -104,4 +109,8 @@ func (s scopeImpl) SelectSQL(out interface{}, sqlgen SQLGenerator) (err error) {
 func (s scopeImpl) ExecSQL(sqlgen SQLGenerator) (err error) {
 	sql, args := sqlgen.Sql()
 	return s.Exec(sql, args...)
+}
+func (s scopeImpl) PrepareSQL(sqlgen SQLGenerator) (*sqlx.Stmt, error) {
+	sql, _ := sqlgen.Sql()
+	return s.Prepare(sql)
 }
