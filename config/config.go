@@ -21,6 +21,20 @@ func GetAny(src *Source, v _Var) any {
 	}
 }
 
+func GetOK[T _TType](src *Source, v *Var[T]) (T, bool) {
+	env := strings.TrimSpace(os.Getenv(v.name))
+	if env == "" {
+		return v.defVal, false
+	} else if val, err := v.parse(env); IsEmpty(err) {
+		return v.defVal, false
+	} else if err != nil {
+		log.Println(v.name+":", err)
+		return v.defVal, false
+	} else {
+		return val, true
+	}
+}
+
 func Get[T _TType](src *Source, v *Var[T]) T {
 	env := strings.TrimSpace(os.Getenv(v.name))
 	if env == "" {
