@@ -1,7 +1,10 @@
 package app
 
 import (
+	"embed"
+
 	"fx.prodigy9.co/cmd"
+	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
 	"github.com/spf13/cobra"
@@ -13,11 +16,15 @@ type Interface interface {
 	Children() []Interface
 
 	Commands() []*cobra.Command
+	EmbeddedMigrations() *embed.FS
 	Middlewares() []middlewares.Interface
 	Controllers() []controllers.Interface
 }
 
 func Start(app Interface) error {
+	if app.EmbeddedMigrations() != nil {
+		migrator.Embed(*app.EmbeddedMigrations())
+	}
 	cmds, mws, ctrs := collect(app)
 	if len(ctrs) > 0 && len(mws) == 0 { // auto-default some middlewares if controllers are added
 		mws = middlewares.DefaultForAPI()

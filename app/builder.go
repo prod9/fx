@@ -1,6 +1,8 @@
 package app
 
 import (
+	"embed"
+
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
 	"github.com/spf13/cobra"
@@ -32,6 +34,10 @@ func (b *Builder) Command(cmd *cobra.Command) *Builder {
 }
 func (b *Builder) Commands(cmds ...*cobra.Command) *Builder {
 	b.commands = append(b.commands, cmds...)
+	return b
+}
+func (b *Builder) EmbedMigrations(migrations embed.FS) *Builder {
+	b.migrations = &migrations
 	return b
 }
 func (b *Builder) DefaultAPIMiddlewares() *Builder {
