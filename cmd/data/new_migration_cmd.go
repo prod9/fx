@@ -11,7 +11,6 @@ import (
 
 	"fx.prodigy9.co/cmd/prompts"
 	"fx.prodigy9.co/config"
-	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/errutil"
 
@@ -41,7 +40,7 @@ func runNewMigrationCmd(cmd *cobra.Command, args []string) (err error) {
 	var (
 		cfg    = config.Configure()
 		prompt = prompts.New(cfg, args)
-		dir    = config.Get(cfg, data.MigrationPathConfig)
+		dir    = config.Get(cfg, migrator.MigrationPathConfig)
 	)
 
 	// we don't normally add migraitons to top-level, so let user pick a folder first

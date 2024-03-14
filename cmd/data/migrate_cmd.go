@@ -29,7 +29,6 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 	var (
 		cfg    = config.Configure()
 		prompt = prompts.New(cfg, args)
-		dir    = config.Get(cfg, data.MigrationPathConfig)
 	)
 
 	db, err := data.Connect(cfg)
@@ -44,7 +43,7 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 		defer scope.End(&err)
 	}
 
-	migrator := migrator.New(db, dir)
+	migrator := migrator.New(db, migrator.FromAuto(cfg))
 	plans, dirty, err := migrator.Plan(scope.Context(), intent)
 	if err != nil {
 		return err

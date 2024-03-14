@@ -15,10 +15,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-var (
-	DatabaseURLConfig   = config.Str("DATABASE_URL")
-	MigrationPathConfig = config.StrDef("DATABASE_MIGRATIONS", "./")
-)
+var DatabaseURLConfig = config.Str("DATABASE_URL")
 
 func MustConnect(cfg *config.Source) *sqlx.DB {
 	if db, err := Connect(cfg); err != nil {

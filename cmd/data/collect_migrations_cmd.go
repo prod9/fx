@@ -8,7 +8,6 @@ import (
 
 	"fx.prodigy9.co/cmd/prompts"
 	"fx.prodigy9.co/config"
-	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/errutil"
 	"github.com/spf13/cobra"
@@ -27,10 +26,9 @@ func runCollectMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
 		cfg    = config.Configure()
 		prompt = prompts.New(cfg, args)
 		outdir = prompt.Str("output dir")
-		indir  = config.Get(cfg, data.MigrationPathConfig)
 	)
 
-	migrations, err := migrator.LoadMigrations(indir)
+	migrations, err := migrator.LoadAuto(cfg)
 	if err != nil {
 		return err
 	}

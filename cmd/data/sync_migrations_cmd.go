@@ -25,7 +25,6 @@ func runSyncMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
 	var (
 		cfg    = config.Configure()
 		prompt = prompts.New(cfg, args)
-		dir    = config.Get(cfg, data.MigrationPathConfig)
 	)
 
 	db, err := data.Connect(cfg)
@@ -35,7 +34,7 @@ func runSyncMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
 
 	var (
 		ctx = data.NewContext(context.Background(), db)
-		mig = migrator.New(db, dir)
+		mig = migrator.New(db, migrator.FromAuto(cfg))
 	)
 
 	plans, dirty, err := mig.Plan(ctx, migrator.IntentSync)

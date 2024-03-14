@@ -38,7 +38,7 @@ func CheckMigrations(cfg *config.Source) func(http.Handler) http.Handler {
 				return
 			}
 
-			m := migrator.New(db, config.Get(cfg, data.MigrationPathConfig))
+			m := migrator.New(db, migrator.FromAuto(cfg))
 			plans, dirty, err := m.Plan(req.Context(), migrator.IntentMigrate)
 			switch {
 			case err != nil:

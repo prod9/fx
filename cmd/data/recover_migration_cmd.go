@@ -25,7 +25,7 @@ func runRecoverMigrationCmd(cmd *cobra.Command, args []string) (err error) {
 	var (
 		cfg    = config.Configure()
 		prompt = prompts.New(cfg, args)
-		dir    = config.Get(cfg, data.MigrationPathConfig)
+		dir    = config.Get(cfg, migrator.MigrationPathConfig)
 	)
 
 	db, err := data.Connect(cfg)
