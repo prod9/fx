@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	MigrationPathConfig = config.Str("DATABASE_MIGRATIONS")
+	MigrationPathConfig = config.StrDef("DATABASE_MIGRATIONS", ".")
 	ErrNoMigrations     = errors.New("migrator: no migrations found")
 
 	embeddedMigrations fs.FS
