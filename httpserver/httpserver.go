@@ -3,11 +3,9 @@ package httpserver
 import (
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/ctrlc"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/httperrors"
 	"fx.prodigy9.co/httpserver/middlewares"
@@ -47,12 +45,9 @@ func (s *Server) Start() error {
 		Handler: router,
 	}
 
-	ctrlC := make(chan os.Signal, 1)
-	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-ctrlC
+	ctrlc.Do(func() {
 		srv.Shutdown(nil)
-	}()
+	})
 
 	log.Println("listening on " + listenAddr)
 	err := srv.ListenAndServe()
