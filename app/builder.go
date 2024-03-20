@@ -5,6 +5,7 @@ import (
 
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
+	"fx.prodigy9.co/worker"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +41,11 @@ func (b *Builder) EmbedMigrations(migrations embed.FS) *Builder {
 	b.migrations = &migrations
 	return b
 }
+func (b *Builder) Job(job worker.Interface) *Builder {
+	b.jobs = append(b.jobs, job)
+	return b
+}
+
 func (b *Builder) DefaultAPIMiddlewares() *Builder {
 	return b.Middlewares(middlewares.DefaultForAPI()...)
 }

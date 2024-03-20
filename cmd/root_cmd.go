@@ -10,7 +10,7 @@ import (
 func BuildRootCommand(desc string, extraCmds ...*cobra.Command) *cobra.Command {
 	desc = strings.TrimSpace(desc)
 	if desc == "" {
-		desc = "PRODIGY9 Application"
+		desc = "PRODIGY9 FX Application"
 	}
 
 	rootCmd := &cobra.Command{Use: "app", Short: desc}
