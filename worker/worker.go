@@ -58,22 +58,30 @@ func New(cfg *config.Source, jobs ...Interface) *Worker {
 	return w
 }
 
-func ScheduleNow(ctx context.Context, job Interface) (int64, error) {
-	return ScheduleAt(ctx, job, time.Time{})
+func ScheduleNowIfNotExists(ctx context.Context, job Interface) (int64, error) {
+	return ScheduleAtIfNotExists(ctx, job, time.Now())
 }
-
-func ScheduleIfNotExists(ctx context.Context, job Interface) (int64, error) {
+func ScheduleInIfNotExists(ctx context.Context, job Interface, d time.Duration) (int64, error) {
+	return ScheduleAtIfNotExists(ctx, job, time.Now().Add(d))
+}
+func ScheduleAtIfNotExists(ctx context.Context, job Interface, t time.Time) (int64, error) {
 	// TODO: Might need to be careful with transactions here
 	_, err := findPendingJobByName(ctx, job.Name())
 	if data.IsNoRows(err) {
-		return ScheduleAt(ctx, job, time.Now())
+		return ScheduleAt(ctx, job, t)
 	} else {
 		return 0, ErrJobExists
 	}
 }
 
+func ScheduleNow(ctx context.Context, job Interface) (int64, error) {
+	return ScheduleAt(ctx, job, time.Now())
+}
+func ScheduleIn(ctx context.Context, job Interface, d time.Duration) (int64, error) {
+	return ScheduleAt(ctx, job, time.Now().Add(d))
+}
 func ScheduleAt(ctx context.Context, job Interface, t time.Time) (int64, error) {
-	log.Println("scheduling", job.Name(), "at", t)
+	log.Println("scheduling", job.Name(), "at", t.Format(time.RFC3339))
 
 	if payload, err := json.Marshal(job); err != nil {
 		return 0, err
