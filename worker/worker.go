@@ -30,9 +30,10 @@ type (
 
 	// Resetter marks the job as needing a Reset before a run.
 	//
-	// Job instances are reused across runs, so some fields might contains stale data from
-	// previous runs. If this is the case, the job should implement this interface and
-	// reset itself to a clean state.
+	// Job instances are reused across runs primarily to avoid requiring calls to the
+	// `reflect` package, so some fields might contains stale data from previous runs. If
+	// this is the case, the job should implement this interface and reset itself to a clean
+	// state.
 	Resetter interface {
 		Reset()
 	}
