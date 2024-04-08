@@ -151,7 +151,7 @@ func (w *Worker) work(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-time.After(w.interval):
 			if !w.workOnce(ctx) {
 				return
 			}
@@ -168,12 +168,7 @@ func (w *Worker) workOnce(ctx context.Context) bool {
 		w.cancel(err)
 		return false
 	} else if job == nil {
-		select {
-		case <-ctx.Done():
-			return false
-		case <-time.After(w.interval):
-			return true
-		}
+		return true
 	}
 
 	log.Printf("running %s #%d", job.Name, job.ID)
