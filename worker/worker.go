@@ -45,6 +45,14 @@ type (
 		cfg       *config.Source
 		cancel    context.CancelCauseFunc
 	}
+
+	workerSignal int
+)
+
+const (
+	signalIdled    workerSignal = iota
+	signalWorkDone workerSignal = iota
+	signalStop     workerSignal = iota
 )
 
 func New(cfg *config.Source, jobs ...Interface) *Worker {
@@ -156,27 +164,39 @@ func (w *Worker) Stop() {
 
 func (w *Worker) work(ctx context.Context) {
 	for {
+		// keep processing jobs, if there are jobs to process
+		// idle and poll only when there are no more jobs to process
+		sig := w.workOnce(ctx)
+		for sig == signalWorkDone {
+			sig = w.workOnce(ctx)
+		}
+
+		switch sig {
+		case signalStop:
+			return
+		case signalIdled:
+			continue
+		}
+
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(w.interval):
-			if !w.workOnce(ctx) {
-				return
-			}
+			continue
 		}
 	}
 }
 
-func (w *Worker) workOnce(ctx context.Context) bool {
+func (w *Worker) workOnce(ctx context.Context) workerSignal {
 	w.Lock()
 	defer w.Unlock()
 
 	job, err := takeOnePendingJob(ctx)
 	if err != nil {
 		w.cancel(err)
-		return false
+		return signalStop
 	} else if job == nil {
-		return true
+		return signalIdled
 	}
 
 	log.Printf("running %s #%d", job.Name, job.ID)
@@ -190,7 +210,7 @@ func (w *Worker) workOnce(ctx context.Context) bool {
 		)
 		if err := markJobAsFailed(ctx, job.ID, err.Error()); err != nil {
 			w.cancel(err)
-			return false
+			return signalStop
 		}
 
 	} else {
@@ -200,11 +220,11 @@ func (w *Worker) workOnce(ctx context.Context) bool {
 		)
 		if err := markJobAsCompleted(ctx, job.ID); err != nil {
 			w.cancel(err)
-			return false
+			return signalStop
 		}
 	}
 
-	return true
+	return signalWorkDone
 }
 
 // TODO: Add more speciailized errors for signaling retries/rerun
@@ -225,6 +245,8 @@ func (w *Worker) processJob(ctx context.Context, job *Job) error {
 	}
 
 	// TODO: Enforce timeouts
+	// TODO: Better to run the job in a separate transaction. So the job state is not
+	// effected by the job code.
 	if err := instance.Run(ctx); err != nil {
 		return fmt.Errorf("run failed: %w", err)
 	} else {
