@@ -5,6 +5,7 @@ go 1.22.0
 require (
 	github.com/chakrit/gendiff v0.0.0-20190724171441-c6e430f125ca
 	github.com/felixge/httpsnoop v1.0.3
+	github.com/getsentry/sentry-go v0.27.0
 	github.com/ggicci/httpin v0.10.1
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-playground/locales v0.14.1
