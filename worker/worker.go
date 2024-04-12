@@ -30,9 +30,10 @@ type (
 
 	// Resetter marks the job as needing a Reset before a run.
 	//
-	// Job instances are reused across runs, so some fields might contains stale data from
-	// previous runs. If this is the case, the job should implement this interface and
-	// reset itself to a clean state.
+	// Job instances are reused across runs primarily to avoid requiring calls to the
+	// `reflect` package, so some fields might contains stale data from previous runs. If
+	// this is the case, the job should implement this interface and reset itself to a clean
+	// state.
 	Resetter interface {
 		Reset()
 	}
@@ -44,6 +45,14 @@ type (
 		cfg       *config.Source
 		cancel    context.CancelCauseFunc
 	}
+
+	workerSignal int
+)
+
+const (
+	signalIdled    workerSignal = iota
+	signalWorkDone workerSignal = iota
+	signalStop     workerSignal = iota
 )
 
 func New(cfg *config.Source, jobs ...Interface) *Worker {
@@ -57,22 +66,30 @@ func New(cfg *config.Source, jobs ...Interface) *Worker {
 	return w
 }
 
-func ScheduleNow(ctx context.Context, job Interface) (int64, error) {
-	return ScheduleAt(ctx, job, time.Time{})
+func ScheduleNowIfNotExists(ctx context.Context, job Interface) (int64, error) {
+	return ScheduleAtIfNotExists(ctx, job, time.Now())
 }
-
-func ScheduleIfNotExists(ctx context.Context, job Interface) (int64, error) {
+func ScheduleInIfNotExists(ctx context.Context, job Interface, d time.Duration) (int64, error) {
+	return ScheduleAtIfNotExists(ctx, job, time.Now().Add(d))
+}
+func ScheduleAtIfNotExists(ctx context.Context, job Interface, t time.Time) (int64, error) {
 	// TODO: Might need to be careful with transactions here
 	_, err := findPendingJobByName(ctx, job.Name())
 	if data.IsNoRows(err) {
-		return ScheduleAt(ctx, job, time.Now())
+		return ScheduleAt(ctx, job, t)
 	} else {
 		return 0, ErrJobExists
 	}
 }
 
+func ScheduleNow(ctx context.Context, job Interface) (int64, error) {
+	return ScheduleAt(ctx, job, time.Now())
+}
+func ScheduleIn(ctx context.Context, job Interface, d time.Duration) (int64, error) {
+	return ScheduleAt(ctx, job, time.Now().Add(d))
+}
 func ScheduleAt(ctx context.Context, job Interface, t time.Time) (int64, error) {
-	log.Println("scheduling", job.Name(), "at", t)
+	log.Println("scheduling", job.Name(), "at", t.Format(time.RFC3339))
 
 	if payload, err := json.Marshal(job); err != nil {
 		return 0, err
@@ -147,32 +164,39 @@ func (w *Worker) Stop() {
 
 func (w *Worker) work(ctx context.Context) {
 	for {
+		// keep processing jobs, if there are jobs to process
+		// idle and poll only when there are no more jobs to process
+		sig := w.workOnce(ctx)
+		for sig == signalWorkDone {
+			sig = w.workOnce(ctx)
+		}
+
+		switch sig {
+		case signalStop:
+			return
+		case signalIdled:
+			continue
+		}
+
 		select {
 		case <-ctx.Done():
 			return
-		default:
-			if !w.workOnce(ctx) {
-				return
-			}
+		case <-time.After(w.interval):
+			continue
 		}
 	}
 }
 
-func (w *Worker) workOnce(ctx context.Context) bool {
+func (w *Worker) workOnce(ctx context.Context) workerSignal {
 	w.Lock()
 	defer w.Unlock()
 
 	job, err := takeOnePendingJob(ctx)
 	if err != nil {
 		w.cancel(err)
-		return false
+		return signalStop
 	} else if job == nil {
-		select {
-		case <-ctx.Done():
-			return false
-		case <-time.After(w.interval):
-			return true
-		}
+		return signalIdled
 	}
 
 	log.Printf("running %s #%d", job.Name, job.ID)
@@ -186,7 +210,7 @@ func (w *Worker) workOnce(ctx context.Context) bool {
 		)
 		if err := markJobAsFailed(ctx, job.ID, err.Error()); err != nil {
 			w.cancel(err)
-			return false
+			return signalStop
 		}
 
 	} else {
@@ -196,11 +220,11 @@ func (w *Worker) workOnce(ctx context.Context) bool {
 		)
 		if err := markJobAsCompleted(ctx, job.ID); err != nil {
 			w.cancel(err)
-			return false
+			return signalStop
 		}
 	}
 
-	return true
+	return signalWorkDone
 }
 
 // TODO: Add more speciailized errors for signaling retries/rerun
@@ -221,6 +245,8 @@ func (w *Worker) processJob(ctx context.Context, job *Job) error {
 	}
 
 	// TODO: Enforce timeouts
+	// TODO: Better to run the job in a separate transaction. So the job state is not
+	// effected by the job code.
 	if err := instance.Run(ctx); err != nil {
 		return fmt.Errorf("run failed: %w", err)
 	} else {
