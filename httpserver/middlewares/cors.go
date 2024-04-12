@@ -19,6 +19,7 @@ func CORSAllowAll(cfg *config.Source) func(http.Handler) http.Handler {
 		handler = cors.New(cors.Options{
 			AllowedOrigins:   strings.Split(origin, ","),
 			AllowCredentials: true, // support fetch() with {credentials: 'include'}
+			AllowedHeaders:   []string{"*"},
 			AllowedMethods: []string{
 				http.MethodHead,
 				http.MethodGet,
