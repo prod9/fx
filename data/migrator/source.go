@@ -145,6 +145,12 @@ func loadMigrations(dir string) (result []Migration, err error) {
 		return nil, fmt.Errorf("migrator: %w", err)
 	}
 
+	_, err = os.Stat(abs)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("migrator: migration directory does not exists: %w", err)
+	} else if err != nil {
+		return nil, fmt.Errorf("migrator: %w", err)
+	}
 	fsys := os.DirFS(abs)
 	return loadMigrationsFS(fsys)
 }
