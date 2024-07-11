@@ -36,8 +36,8 @@ func NewSource(vars []_Var) *Source {
 	}
 
 	if len(envs) > 0 {
-		for _, env := range envs {
-			if err := godotenv.Load(env); err != nil {
+		for i := len(envs) - 1; i >= 0; i-- {
+			if err := godotenv.Load(envs[i]); err != nil {
 				log.Println("dotenv:", err)
 				return &Source{vars}
 			}
