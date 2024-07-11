@@ -7,37 +7,32 @@ import (
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/ctrlc"
 	"fx.prodigy9.co/httpserver/controllers"
-	"fx.prodigy9.co/httpserver/httperrors"
 	"fx.prodigy9.co/httpserver/middlewares"
-	"fx.prodigy9.co/httpserver/render"
 	"github.com/go-chi/chi/v5"
 )
 
 var ListenAddrConfig = config.StrDef("LISTEN_ADDR", "0.0.0.0:3000")
 
 type Server struct {
-	cfg  *config.Source
-	mws  []middlewares.Interface
-	ctrs []controllers.Interface
+	cfg       *config.Source
+	fragments []*Fragment
 }
 
 func New(cfg *config.Source, mws []middlewares.Interface, ctrs []controllers.Interface) *Server {
-	return &Server{cfg, mws, ctrs}
+	return &Server{cfg, []*Fragment{NewFragment(mws, ctrs)}}
+}
+func NewWithFragments(cfg *config.Source, fragments []*Fragment) *Server {
+	return &Server{cfg, fragments}
 }
 
 func (s *Server) Start() error {
 	router := chi.NewRouter()
-	for _, mws := range s.mws {
-		router.Use(mws(s.cfg))
-	}
-	for _, ctr := range s.ctrs {
-		if err := ctr.Mount(s.cfg, router); err != nil {
+
+	for _, frag := range s.fragments {
+		if err := frag.configureRoutes(s.cfg, router); err != nil {
 			return err
 		}
 	}
-	router.NotFound(func(resp http.ResponseWriter, req *http.Request) {
-		render.Error(resp, req, 404, httperrors.ErrNotFound)
-	})
 
 	listenAddr := config.Get(s.cfg, ListenAddrConfig)
 	srv := http.Server{
