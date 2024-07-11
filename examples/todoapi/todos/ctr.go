@@ -17,8 +17,6 @@ type Ctr struct{}
 
 func (c Ctr) Mount(cfg *config.Source, router chi.Router) error {
 	router.Group(func(router chi.Router) {
-		router.Use(auth.RequireSession(cfg))
-
 		router.Get("/todos", c.Index)
 		router.Post("/todos", c.Create)
 		router.Patch("/todos/{id}", c.Update)

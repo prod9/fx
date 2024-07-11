@@ -8,10 +8,12 @@ import (
 	"fx.prodigy9.co/app"
 	"fx.prodigy9.co/data"
 	pager "fx.prodigy9.co/data/page"
+	"fx.prodigy9.co/examples/todoapi/auth"
 )
 
 var App = app.Build().
 	Description("Basic username/password authentication").
+	Middlewares(auth.RequireSession).
 	Controllers(Ctr{})
 
 type Todo struct {
