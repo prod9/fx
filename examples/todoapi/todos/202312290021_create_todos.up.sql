@@ -1,0 +1,10 @@
+-- vim: filetype=SQL
+CREATE TABLE todos (
+	id      SERIAL PRIMARY KEY,
+	user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+	title        TEXT NOT NULL,
+	description  TEXT NOT NULL DEFAULT '',
+	completed_at TIMESTAMPTZ,
+	created_at   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

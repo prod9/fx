@@ -1,0 +1,15 @@
+-- vim: filetype=SQL
+CREATE TABLE users (
+	id            SERIAL PRIMARY KEY,
+	username      TEXT UNIQUE NOT NULL,
+	password_hash TEXT NOT NULL,
+	created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sessions (
+	id         SERIAL PRIMARY KEY,
+	user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	token      TEXT NOT NULL,
+	expires_at TIMESTAMPTZ NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

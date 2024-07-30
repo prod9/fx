@@ -128,3 +128,19 @@ func (s *Session) List(question, def string, options []string) string {
 		return result
 	}
 }
+
+func GenList[T any](s *Session, question string, def T, options []T, namer func(item T) string) T {
+	names := make([]string, len(options))
+	for i, item := range options {
+		names[i] = namer(item)
+	}
+
+	selected := s.List(question, namer(def), names)
+	for i, name := range names {
+		if name == selected {
+			return options[i]
+		}
+	}
+
+	return def
+}

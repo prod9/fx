@@ -9,10 +9,14 @@ var Cmd = &cobra.Command{
 
 func init() {
 	Cmd.AddCommand(
+		collectMigrationsCmd,
 		createDBCmd,
 		migrateCmd,
 		newMigrationCmd,
+		psqlCmd,
+		recoverMigrationCmd,
 		rollbackCmd,
-		collectMigrationsCmd,
+		listMigrationsCmd,
+		syncMigrationsCmd,
 	)
 }

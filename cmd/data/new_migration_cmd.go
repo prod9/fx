@@ -6,11 +6,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"fx.prodigy9.co/cmd/prompts"
 	"fx.prodigy9.co/config"
-	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/errutil"
 
@@ -40,10 +40,26 @@ func runNewMigrationCmd(cmd *cobra.Command, args []string) (err error) {
 	var (
 		cfg    = config.Configure()
 		prompt = prompts.New(cfg, args)
-		name   = prompt.Str("name of migration")
-		dir    = config.Get(cfg, data.MigrationPathConfig)
+		dir    = config.Get(cfg, migrator.MigrationPathConfig)
 	)
 
+	// we don't normally add migraitons to top-level, so let user pick a folder first
+	subdirs := []string{"."}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+			subdirs = append(subdirs, entry.Name())
+		}
+	}
+
+	dir = filepath.Join(dir, prompt.List("which subdirectory", subdirs[0], subdirs))
+	name := prompt.Str("name of migration")
+
+	// create the migration files
 	uppath, downpath, err := migrator.MigrationPath(dir, name)
 	if err != nil {
 		return err

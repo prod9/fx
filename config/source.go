@@ -6,11 +6,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/joho/godotenv"
 )
 
-const DotEnvSearchLimit = 5
+const DotEnvSearchLimit = 4
 
 var defaultSource *Source = &Source{}
 
@@ -35,9 +36,11 @@ func NewSource(vars []_Var) *Source {
 	}
 
 	if len(envs) > 0 {
-		if err := godotenv.Load(envs...); err != nil {
-			log.Println("dotenv:", err)
-			return &Source{vars}
+		for i := len(envs) - 1; i >= 0; i-- {
+			if err := godotenv.Load(envs[i]); err != nil {
+				log.Println("dotenv:", err)
+				return &Source{vars}
+			}
 		}
 	}
 
@@ -64,9 +67,8 @@ func findDotEnvs() ([]string, error) {
 	}
 
 	for n := 0; n < DotEnvSearchLimit; n++ {
-		dotgit := filepath.Join(wd, ".git")
-		dotenv := filepath.Join(wd, ".env.local")
-		dotenvlocal := filepath.Join(wd, ".env")
+		dotenv := filepath.Join(wd, ".env")
+		dotenvlocal := filepath.Join(wd, ".env.local")
 
 		if _, err := os.Stat(dotenvlocal); err != nil {
 			if !errors.Is(err, fs.ErrNotExist) {
@@ -83,6 +85,7 @@ func findDotEnvs() ([]string, error) {
 			envs = append(envs, dotenv)
 		}
 
+		dotgit := filepath.Join(wd, ".git")
 		if _, err := os.Stat(dotgit); !errors.Is(err, fs.ErrNotExist) {
 			// we found a .git, most likely project's root so we stop here
 			break
@@ -91,5 +94,7 @@ func findDotEnvs() ([]string, error) {
 		}
 	}
 
+	// reverse so it's in Overload-able order
+	slices.Reverse(envs)
 	return envs, nil
 }

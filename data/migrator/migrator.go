@@ -40,11 +40,11 @@ const (
 
 type Migrator struct {
 	db  *sqlx.DB
-	dir string
+	src Source
 }
 
-func New(db *sqlx.DB, dir string) *Migrator {
-	return &Migrator{db, dir}
+func New(db *sqlx.DB, src Source) *Migrator {
+	return &Migrator{db, src}
 }
 
 func (m *Migrator) Plan(ctx context.Context, intent Intent) (actions []Plan, dirty bool, err error) {
@@ -60,7 +60,7 @@ func (m *Migrator) Plan(ctx context.Context, intent Intent) (actions []Plan, dir
 		defer scope.End(&err)
 	}
 
-	if inFiles, err = LoadMigrations(m.dir); err != nil {
+	if inFiles, err = Load(m.src); err != nil {
 		return
 	} else if inDB, err = m.loadFromDB(scope.Context()); err != nil {
 		return
@@ -218,6 +218,11 @@ func (m *Migrator) Apply(ctx context.Context, plan Plan) (err error) {
 		if err = scope.Exec(PruneMigrationSQL, mig.Name); err != nil {
 			return
 		}
+
+	case ActionRecover:
+		// TODO: Probably need to re-architect a bit and make plan self-execute instead
+		//   of switching on Action here. Adding I/O code here feels wrong.
+		return fmt.Errorf("recover plan must be manually implemented")
 
 	case ActionMigrate:
 		if err = scope.Exec(UpdateMigrationSQL, mig.Name, mig.UpSQL, mig.DownSQL); err != nil {

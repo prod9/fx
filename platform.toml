@@ -1,0 +1,27 @@
+# vim: filetype=toml
+
+maintainer = "Chakrit Wichian <chakrit@prodigy9.co>"
+platform = "auto"
+repository = "https://github.com/prod9/fx"
+
+environments = ["fx.prodigy9.co"]
+strategy = "semver"
+
+excludes = [
+	"*.docker",
+	"*.local",
+	".dockerignore",
+	".git",
+	".github",
+	".gitignore",
+	".idea",
+	"node_modules",
+	"platform.toml",
+]
+
+[modules.fx]
+args = ["serve"]
+builder = "go/basic"
+image = "ghcr.io/prod9/fx"
+package = "fx.prodigy9.co"
+timeout = "2m0s"

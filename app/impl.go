@@ -1,8 +1,13 @@
 package app
 
-import "github.com/spf13/cobra"
-import "fx.prodigy9.co/httpserver/middlewares"
-import "fx.prodigy9.co/httpserver/controllers"
+import (
+	"embed"
+
+	"fx.prodigy9.co/httpserver/controllers"
+	"fx.prodigy9.co/httpserver/middlewares"
+	"fx.prodigy9.co/worker"
+	"github.com/spf13/cobra"
+)
 
 type appImpl struct {
 	name          string
@@ -12,6 +17,8 @@ type appImpl struct {
 
 	rootCommand *cobra.Command
 	commands    []*cobra.Command
+	migrations  *embed.FS
+	jobs        []worker.Interface
 
 	middlewares []middlewares.Interface
 	controllers []controllers.Interface
@@ -24,8 +31,10 @@ func (a *appImpl) Description() string            { return a.description }
 func (a *appImpl) Configurations() map[string]any { return a.configuration }
 func (a *appImpl) Children() []Interface          { return a.children }
 
-func (a *appImpl) RootCommand() *cobra.Command { return a.rootCommand }
-func (a *appImpl) Commands() []*cobra.Command  { return a.commands }
+func (a *appImpl) RootCommand() *cobra.Command   { return a.rootCommand }
+func (a *appImpl) Commands() []*cobra.Command    { return a.commands }
+func (a *appImpl) EmbeddedMigrations() *embed.FS { return a.migrations }
+func (a *appImpl) Jobs() []worker.Interface      { return a.jobs }
 
 func (a *appImpl) Middlewares() []middlewares.Interface { return a.middlewares }
 func (a *appImpl) Controllers() []controllers.Interface { return a.controllers }

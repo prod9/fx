@@ -1,0 +1,23 @@
+# vim: filetype=yaml
+steps:
+  - name: ":mountain: Prepare OS"
+    command: "apk add build-base git go"
+    key: os
+
+  # regular builds
+  - name: ":wrench: Build"
+    command: "./platform build"
+    if: build.tag == null
+    depends_on: os
+
+  # publish image if git tag is present
+  - name: ":wrench: Build and Publish"
+    command: "./platform publish"
+    if: build.tag != null && build.tag =~ /^v[0-9]+.*/
+    depends_on: os
+
+  # deploy if environment tag is present
+  - name: ":rocket: Build and Deploy"
+    command: "./platform deploy --no-tag $$BUILDKITE_TAG"
+    if: build.tag != null && build.tag !~ /^v[0-9]+.*/
+    depends_on: os

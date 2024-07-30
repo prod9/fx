@@ -9,13 +9,31 @@ import (
 )
 
 func BuildServeCommand(mws []middlewares.Interface, ctrs []controllers.Interface) *cobra.Command {
+	return buildServeCommand(func() *httpserver.Server {
+		return httpserver.New(
+			config.Configure(),
+			mws,
+			ctrs,
+		)
+	})
+}
+
+func BuildServeCommandFromFragments(fragments ...*httpserver.Fragment) *cobra.Command {
+	return buildServeCommand(func() *httpserver.Server {
+		return httpserver.NewWithFragments(
+			config.Configure(),
+			fragments,
+		)
+	})
+}
+
+func buildServeCommand(buildServer func() *httpserver.Server) *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
 		Short: "Starts an HTTP server.",
 		RunE: func(_ *cobra.Command, args []string) error {
-			cfg := config.Configure()
-			srv := httpserver.New(cfg, mws, ctrs)
-			return srv.Start()
+			return buildServer().Start()
 		},
 	}
+
 }

@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Constraint for the generic T used in all the vars, in case we ever need to change it or
@@ -42,16 +43,21 @@ func (v Var[T]) defaultAny() any                  { return v.defVal }
 func (v Var[T]) parseAny(str string) (any, error) { return v.parse(str) }
 func (_ Var[T]) _var()                            { /* marker */ }
 
-func Str(name string) *Var[string]                    { return NewVar(name, "", parseStr) }
+func Str(name string) *Var[string]             { return NewVar(name, "", parseStr) }
+func Int(name string) *Var[int]                { return NewVar(name, 0, parseInt) }
+func Int64(name string) *Var[int64]            { return NewVar(name, 0, parseInt64) }
+func URL(name string) *Var[*url.URL]           { return NewVar(name, nil, url.Parse) }
+func Bool(name string) *Var[bool]              { return NewVar(name, false, strconv.ParseBool) }
+func Duration(name string) *Var[time.Duration] { return NewVar(name, 0, time.ParseDuration) }
+
 func StrDef(name, def string) *Var[string]            { return NewVar(name, def, parseStr) }
-func Int(name string) *Var[int]                       { return NewVar(name, 0, parseInt) }
 func IntDef(name string, def int) *Var[int]           { return NewVar(name, def, parseInt) }
-func Int64(name string) *Var[int64]                   { return NewVar(name, 0, parseInt64) }
 func Int64Def(name string, def int64) *Var[int64]     { return NewVar(name, def, parseInt64) }
-func URL(name string) *Var[*url.URL]                  { return NewVar(name, nil, url.Parse) }
 func URLDef(name string, def *url.URL) *Var[*url.URL] { return NewVar(name, def, url.Parse) }
-func Bool(name string) *Var[bool]                     { return NewVar(name, false, strconv.ParseBool) }
 func BoolDef(name string, def bool) *Var[bool]        { return NewVar(name, def, strconv.ParseBool) }
+func DurationDef(name string, def time.Duration) *Var[time.Duration] {
+	return NewVar(name, def, time.ParseDuration)
+}
 
 func parseStr(s string) (string, error) {
 	if _s := strings.TrimSpace(s); _s == "" {

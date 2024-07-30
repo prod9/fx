@@ -1,9 +1,14 @@
 package app
 
 import (
+	"embed"
+
 	"fx.prodigy9.co/cmd"
+	"fx.prodigy9.co/data/migrator"
+	"fx.prodigy9.co/httpserver"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
+	"fx.prodigy9.co/worker"
 	"github.com/spf13/cobra"
 )
 
@@ -13,17 +18,27 @@ type Interface interface {
 	Children() []Interface
 
 	Commands() []*cobra.Command
+	EmbeddedMigrations() *embed.FS
+	Jobs() []worker.Interface
+
 	Middlewares() []middlewares.Interface
 	Controllers() []controllers.Interface
 }
 
 func Start(app Interface) error {
-	cmds, mws, ctrs := collect(app)
-	if len(ctrs) > 0 && len(mws) == 0 { // auto-default some middlewares if controllers are added
-		mws = middlewares.DefaultForAPI()
+	if app.EmbeddedMigrations() != nil {
+		migrator.Embed(*app.EmbeddedMigrations())
 	}
-	if len(ctrs) > 0 || len(mws) > 0 { // don't add `serve` command if there's nothing to serve
-		cmds = append(cmds, cmd.BuildServeCommand(mws, ctrs))
+
+	jobs, cmds, fragment := collect(app)
+	if len(jobs) > 0 {
+		cmds = append(cmds, cmd.BuildWorkerCommand(jobs...))
+	}
+	if !fragment.IsEmpty() {
+		if fragment.HasNoMiddlewares() {
+			fragment.AddMiddlewares(middlewares.DefaultForAPI()...)
+		}
+		cmds = append(cmds, cmd.BuildServeCommandFromFragments(fragment))
 	}
 
 	return cmd.
@@ -31,19 +46,26 @@ func Start(app Interface) error {
 		Execute()
 }
 
-func collect(app Interface) ([]*cobra.Command, []middlewares.Interface, []controllers.Interface) {
+func collect(app Interface) (
+	[]worker.Interface,
+	[]*cobra.Command,
+	*httpserver.Fragment,
+) {
 	var (
-		mws  = app.Middlewares()
-		ctrs = app.Controllers()
-		cmds = app.Commands()
+		jobs     = app.Jobs()
+		cmds     = app.Commands()
+		fragment = httpserver.NewFragment(
+			app.Middlewares(),
+			app.Controllers(),
+		)
 	)
 
 	for _, child := range app.Children() {
-		childCmds, childMws, childCtrs := collect(child)
+		childJobs, childCmds, childFragment := collect(child)
+		jobs = append(jobs, childJobs...)
 		cmds = append(cmds, childCmds...)
-		mws = append(mws, childMws...)
-		ctrs = append(ctrs, childCtrs...)
+		fragment.AddChild(childFragment)
 	}
 
-	return cmds, mws, ctrs
+	return jobs, cmds, fragment
 }

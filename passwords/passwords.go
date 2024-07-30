@@ -25,9 +25,7 @@ func Compare(hash, pwd string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(pwd))
 	if err == nil {
 		return nil
-	}
-
-	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+	} else if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 		return ErrPasswordMismatch
 	} else {
 		return fmt.Errorf("passwords: %w", err)
