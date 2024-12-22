@@ -11,9 +11,8 @@ import (
 func main() {
 	handler := vanity.GitHubHandler("fx.prodigy9.co", "prod9", "fx", "https")
 
-	err := app.
-		Build().
-		DefaultAPIMiddlewares().
+	err := app.Build().
+		AddDefaults().
 		Controllers(controllers.FromHandler("/*", handler)).
 		Start()
 	if err != nil {
