@@ -3,15 +3,20 @@ package config
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 )
 
 func GetAny(src *Source, v _Var) any {
-	env := strings.TrimSpace(os.Getenv(v.Name()))
-	if env == "" {
+	raw, ok, err := src.provider.Get(v.Name())
+	if err != nil {
+		log.Println("config:", err)
+		return nil
+	}
+
+	raw = strings.TrimSpace(raw)
+	if !ok || raw == "" {
 		return v.defaultAny()
-	} else if val, err := v.parseAny(env); IsEmpty(err) {
+	} else if val, err := v.parseAny(raw); IsEmpty(err) {
 		return v.defaultAny()
 	} else if err != nil {
 		log.Println(v.Name()+":", err)
@@ -22,10 +27,16 @@ func GetAny(src *Source, v _Var) any {
 }
 
 func GetOK[T _TType](src *Source, v *Var[T]) (T, bool) {
-	env := strings.TrimSpace(os.Getenv(v.name))
-	if env == "" {
+	raw, ok, err := src.provider.Get(v.Name())
+	if err != nil {
+		log.Println("config:", err)
 		return v.defVal, false
-	} else if val, err := v.parse(env); IsEmpty(err) {
+	}
+
+	raw = strings.TrimSpace(raw)
+	if !ok || raw == "" {
+		return v.defVal, false
+	} else if val, err := v.parse(raw); IsEmpty(err) {
 		return v.defVal, false
 	} else if err != nil {
 		log.Println(v.name+":", err)
@@ -36,10 +47,16 @@ func GetOK[T _TType](src *Source, v *Var[T]) (T, bool) {
 }
 
 func Get[T _TType](src *Source, v *Var[T]) T {
-	env := strings.TrimSpace(os.Getenv(v.name))
-	if env == "" {
+	raw, _, err := src.provider.Get(v.Name())
+	if err != nil {
+		log.Println("config:", err)
 		return v.defVal
-	} else if val, err := v.parse(env); IsEmpty(err) {
+	}
+
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return v.defVal
+	} else if val, err := v.parse(raw); IsEmpty(err) {
 		return v.defVal
 	} else if err != nil {
 		log.Println(v.name+":", err)
@@ -50,7 +67,10 @@ func Get[T _TType](src *Source, v *Var[T]) T {
 }
 
 func Set[T _TType](src *Source, v *Var[T], val T) {
-	os.Setenv(v.Name(), fmt.Sprint(val))
+	err := src.provider.Set(v.Name(), fmt.Sprint(val))
+	if err != nil {
+		log.Println("config:", err)
+	}
 }
 
 // SetDefault sets a new default value **globally** for the entire program overiding any

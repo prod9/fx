@@ -3,6 +3,8 @@ package app
 import (
 	"embed"
 
+	"fx.prodigy9.co/cmd"
+	"fx.prodigy9.co/cmd/data"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
 	"fx.prodigy9.co/worker"
@@ -15,6 +17,21 @@ type Builder struct {
 
 func Build() *Builder           { return &Builder{} }
 func (b *Builder) Start() error { return Start(&b.appImpl) }
+
+func (b *Builder) AddDefaults() *Builder {
+	return b.AddDefaultMiddlewares().
+		AddDefaultCommands()
+}
+func (b *Builder) AddDefaultMiddlewares() *Builder {
+	return b.Middlewares(middlewares.DefaultForAPI()...)
+}
+func (b *Builder) AddDefaultCommands() *Builder {
+	return b.Commands(
+		cmd.PrintConfigCmd,
+		cmd.TestEmailCmd,
+		data.Cmd,
+	)
+}
 
 func (b *Builder) Name(name string) *Builder {
 	b.name = name
@@ -46,9 +63,6 @@ func (b *Builder) Job(job worker.Interface) *Builder {
 	return b
 }
 
-func (b *Builder) DefaultAPIMiddlewares() *Builder {
-	return b.Middlewares(middlewares.DefaultForAPI()...)
-}
 func (b *Builder) Middlewares(mws ...middlewares.Interface) *Builder {
 	b.middlewares = append(b.middlewares, mws...)
 	return b

@@ -13,7 +13,7 @@ import (
 func main() {
 	err := app.Build().
 		Description("Example TODO API application").
-		DefaultAPIMiddlewares().
+		AddDefaults().
 		Middlewares(middlewares.DebugRequest).
 		Controllers(controllers.Home{}).
 		Mount(auth.App).

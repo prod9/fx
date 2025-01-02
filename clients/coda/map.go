@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 func Map(target any, row *Row) error {
@@ -36,18 +37,24 @@ func mapStruct(v reflect.Value, t reflect.Type, row *Row) error {
 		}
 	}
 
+	timeType := reflect.TypeOf(time.Time{})
+
 	var err error
 	for codaID, idx := range codaToField {
 		field, fieldType, rowValue := v.Field(idx), t.Field(idx).Type, row.Values[codaID]
-		switch fieldType.Kind() {
-		case reflect.String:
-			err = mapString(field, fieldType, rowValue)
-		case reflect.Slice:
-			err = mapSlice(field, fieldType, rowValue)
-		case reflect.Bool:
-			err = mapBool(field, fieldType, rowValue)
-		default:
-			err = fmt.Errorf("cannot map coda value to a `%s` field", field.Type())
+		if fieldType == timeType {
+			err = mapTime(field, fieldType, rowValue)
+		} else {
+			switch fieldType.Kind() {
+			case reflect.String:
+				err = mapString(field, fieldType, rowValue)
+			case reflect.Slice:
+				err = mapSlice(field, fieldType, rowValue)
+			case reflect.Bool:
+				err = mapBool(field, fieldType, rowValue)
+			default:
+				err = fmt.Errorf("cannot map coda value to a `%s` field", field.Type())
+			}
 		}
 
 		if err != nil {
@@ -118,4 +125,22 @@ func mapBool(v reflect.Value, t reflect.Type, value any) error {
 	// TODO: Strings and everything else
 
 	return fmt.Errorf("cannot map coda value `%#v` to bool", value)
+}
+func mapTime(v reflect.Value, t reflect.Type, value any) error {
+	if value == nil {
+		v.Set(reflect.ValueOf(time.Time{}))
+		return nil
+	}
+
+	var str string
+	if err := mapString(reflect.ValueOf(&str).Elem(), reflect.TypeOf(str), value); err != nil {
+		return fmt.Errorf("cannot map field `%s` to time.Time: %w", t.Name(), err)
+	}
+
+	if tm, err := time.Parse(time.RFC3339, str); err != nil {
+		return fmt.Errorf("cannot map `%s` to a time.Time field `%s`: %w", str, t.Name(), err)
+	} else {
+		v.Set(reflect.ValueOf(tm))
+		return nil
+	}
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var testEmailCmd = &cobra.Command{
+var TestEmailCmd = &cobra.Command{
 	Use:   "test-email",
 	Short: "Sends a test email to check if SMTP configuration works",
 	RunE:  runTestEmailCmd,
