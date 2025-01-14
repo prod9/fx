@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"runtime"
 	"strings"
 
 	"fx.prodigy9.co/config"
@@ -15,7 +16,11 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-var DatabaseURLConfig = config.Str("DATABASE_URL")
+var (
+	DatabaseURLConfig     = config.Str("DATABASE_URL")
+	DatabaseMaxIdleConfig = config.IntDef("DATABASE_MAX_IDLE", runtime.NumCPU())
+	DatabaseMaxOpenConfig = config.IntDef("DATABASE_MAX_OPEN", -1)
+)
 
 func MustConnect(cfg *config.Source) *sqlx.DB {
 	if db, err := Connect(cfg); err != nil {
@@ -31,7 +36,19 @@ func Connect(cfg *config.Source) (*sqlx.DB, error) {
 	if db, err := sqlx.Open("pgx", dbURL); err != nil {
 		return nil, fmt.Errorf("database: %w", err)
 	} else {
+		configureDB(cfg, db)
 		return db, nil
+	}
+}
+func configureDB(cfg *config.Source, db *sqlx.DB) {
+	maxIdle, maxOpen :=
+		config.Get(cfg, DatabaseMaxIdleConfig),
+		config.Get(cfg, DatabaseMaxOpenConfig)
+	if maxIdle > 0 {
+		db.SetMaxIdleConns(maxIdle)
+	}
+	if maxOpen > 0 {
+		db.SetMaxOpenConns(maxOpen)
 	}
 }
 
