@@ -53,9 +53,9 @@ func (c *dataContext) tryInit() error {
 }
 
 func AddDataContext(cfg *config.Source) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		dc := newDataContext(cfg)
+	dc := newDataContext(cfg)
 
+	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 			if db, err := dc.Get(); err != nil {
 				render.Error(resp, req, 500, err)
