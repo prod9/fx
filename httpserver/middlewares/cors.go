@@ -9,6 +9,15 @@ import (
 
 var CORSOriginConfig = config.Str("API_CORS_ORIGINS")
 
+func CORS(cfg *config.Source, options cors.Options) func(http.Handler) http.Handler {
+	origin := strings.TrimSpace(config.Get(cfg, CORSOriginConfig))
+	if origin != "" {
+		options.AllowedOrigins = strings.Split(origin, ",")
+	}
+
+	return cors.New(options).Handler
+}
+
 func CORSAllowAll(cfg *config.Source) func(http.Handler) http.Handler {
 	var handler *cors.Cors
 
@@ -31,7 +40,5 @@ func CORSAllowAll(cfg *config.Source) func(http.Handler) http.Handler {
 		})
 	}
 
-	return func(h http.Handler) http.Handler {
-		return handler.Handler(h)
-	}
+	return handler.Handler
 }
