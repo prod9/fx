@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-func Multi(errs ...error) error {
+func Multi(errs ...error) error              { return multi("", errs...) }
+func Group(name string, errs ...error) error { return multi(name+".", errs...) }
+
+func multi(prefix string, errs ...error) error {
 	if len(errs) == 0 {
 		return nil
 	}
@@ -18,11 +21,24 @@ func Multi(errs ...error) error {
 		}
 
 		if valErr, ok := err.(*Error); ok {
+			// another multi error, merge it
 			for _, fieldErrs := range valErr.Fields {
-				outerr = outerr.Add(fieldErrs...)
+				for fieldErr := range fieldErrs {
+					outerr = outerr.AddField(
+						prefix+fieldErrs[fieldErr].Field,
+						fieldErrs[fieldErr].Message,
+						fieldErrs[fieldErr].Value,
+					)
+				}
 			}
+
 		} else if fieldErr, ok := err.(*FieldError); ok {
-			outerr = outerr.Add(fieldErr)
+			outerr = outerr.AddField(
+				prefix+fieldErr.Field,
+				fieldErr.Message,
+				fieldErr.Value,
+			)
+
 		} else {
 			panic("validate.Multi: errors must all be *Error or *FieldError")
 		}
