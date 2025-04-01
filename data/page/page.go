@@ -20,6 +20,18 @@ type Page[T any] struct {
 	TotalRows  int `json:"total_rows"`
 }
 
+func Empty[T any]() Page[T] {
+	return Page[T]{
+		Meta: Meta{
+			Page:        1,
+			RowsPerPage: DefaultPageSize,
+		},
+		Data:       []T{},
+		TotalPages: 0,
+		TotalRows:  0,
+	}
+}
+
 func Select[T any](ctx context.Context, out *Page[T], meta Meta, sql string, args ...any) (err error) {
 	if out == nil {
 		return ErrNilOut
