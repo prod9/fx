@@ -1,6 +1,6 @@
 module fx.prodigy9.co
 
-go 1.22.0
+go 1.24.2
 
 require (
 	github.com/chakrit/gendiff v0.0.0-20190724171441-c6e430f125ca
