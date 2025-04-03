@@ -1,4 +1,4 @@
-package objstore
+package blobstore
 
 import (
 	"context"
@@ -60,7 +60,7 @@ func (s *Client) PresignedGetURL(ctx context.Context, key string, age time.Durat
 	if client, err := s.tryGetMinio(); err != nil {
 		return "", err
 	} else if u, err := client.PresignedGetObject(ctx, s.bucket, key, age, nil); err != nil {
-		return "", fmt.Errorf("objstore: %w", err)
+		return "", fmt.Errorf("blobstore: %w", err)
 	} else {
 		return u.String(), nil
 	}
@@ -74,7 +74,7 @@ func (s *Client) PresignedPutURL(ctx context.Context, key string, age time.Durat
 	if client, err := s.tryGetMinio(); err != nil {
 		return "", err
 	} else if u, err := client.PresignedPutObject(ctx, s.bucket, key, age); err != nil {
-		return "", fmt.Errorf("objstore: %w", err)
+		return "", fmt.Errorf("blobstore: %w", err)
 	} else {
 		return u.String(), nil
 	}
@@ -89,7 +89,7 @@ func (s *Client) DeleteObject(ctx context.Context, key string) error {
 	if client, err := s.tryGetMinio(); err != nil {
 		return err
 	} else if err := client.RemoveObject(ctx, s.bucket, key, opts); err != nil {
-		return fmt.Errorf("objstore: %w", err)
+		return fmt.Errorf("blobstore: %w", err)
 	} else {
 		return nil
 	}
@@ -104,7 +104,7 @@ func (s *Client) ForceDeleteObject(ctx context.Context, key string) error {
 	if client, err := s.tryGetMinio(); err != nil {
 		return err
 	} else if err := client.RemoveObject(ctx, s.bucket, key, opts); err != nil {
-		return fmt.Errorf("objstore: %w", err)
+		return fmt.Errorf("blobstore: %w", err)
 	} else {
 		return nil
 	}
