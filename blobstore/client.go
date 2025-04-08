@@ -131,7 +131,7 @@ func (s *Client) initMinio() error {
 
 	s3url, err := url.Parse(config.Get(s.cfg, StorgeURLConfig))
 	if err != nil {
-		return fmt.Errorf("objstore: %w", err)
+		return fmt.Errorf("blobstore: %w", err)
 	}
 
 	accessKey := s3url.User.Username()
@@ -139,7 +139,7 @@ func (s *Client) initMinio() error {
 	endpoint := s3url.Host
 	bucket := strings.TrimPrefix(s3url.Path, "/")
 	if accessKey == "" && !hasSecretKey {
-		return errors.New("objstore: access key or secret key not configured")
+		return errors.New("blobstore: access key or secret key not configured")
 	}
 
 	client, err := minio.New(endpoint, &minio.Options{
@@ -147,7 +147,7 @@ func (s *Client) initMinio() error {
 		Secure: true,
 	})
 	if err != nil {
-		return fmt.Errorf("objstore: %w", err)
+		return fmt.Errorf("blobstore: %w", err)
 	}
 
 	s.client = client
