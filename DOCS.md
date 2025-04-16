@@ -1,8 +1,8 @@
 # FX Documentation
 
-FX is short for framework. It tries not to become a full-fleged framework, but instead a
-convenience set of tools for putting together most of things that are needed to build a
-proper functioning webapp. Add more libs as needed, etc.
+FX is short for framework. However, it tries not to become a full-fleged framework, but
+instead a convenience set of tools that work well together but still allow bits and pieces
+to be swapped in/out as the engineer prefers.
 
 ## Configuration
 
@@ -246,7 +246,7 @@ The `render` package has the following methods as of v0.7:
 ## Middlewares
 
 Middlewares in `fx` attempts 2 things: Conform to go's standard `http.Handler` signature
-and easy to use with `github.com/go-chi/chi`.
+and be easy to use with `github.com/go-chi/chi`.
 
 They are a bit complicated, but not hard to understand. There are 3 layers of `func`
 nesting:
@@ -307,7 +307,7 @@ Points to note:
 Some default middlewares are included when `.AddDefaults()` is called:
 
 * `middlewares.Configure` - Injects `*config.Source` into the request context.
-* `middlewares.LogRequests` - Capture metrics with `httpsnoop` and log requests/responses.
+* `middlewares.LogRequests` - Capture metrics with `github.com/felixge/httpsnoop` and log requests/responses.
 * `middlewares.CORSAllowAll()` - Wraps `github.com/rs/cors` to allow all CORS requests.
 * `middlewares.AddDataContext` - Adds a `*sqlx.DB` to the request context.
 
@@ -417,13 +417,16 @@ and similar. They should work, but largely untested, and very alpha.
 
 ## Transactions
 
-Transactions are mostly controlled through the use of `data.Scope`. Create and `.End()` a
-scope properly and transactions should be automatically `COMMIT`-ed or `ROLLBACK`-ed.
+Transactions are mostly controlled through the use of `data.Scope`. Take care to create
+and `.End()` a scope properly and transactions should be automatically `COMMIT`-ed or
+`ROLLBACK`-ed.
 
 Originally, these used to be quite manual, posting here for reference:
 
 ```go
 func GetUserByID(ctx context.Context, out any, id int64) (err error) {
+
+  // sets up the scope
   var scope data.Scope
   scope, err = data.NewScope(ctx, nil)
   if err != nil {
@@ -445,18 +448,18 @@ func GetUserByID(ctx context.Context, out any, id int64) (err error) {
     user.Profile = profile
     return nil
   }
+
 }
 ```
 
-In recent versions, there are 2 ways, both a little bit more ergonomic, to use scopes:
-You can use `data.Run` to use closure-scoping.
+In recent versions, there are 2 new ays, both a little bit more ergonomic to use.
+First, you can use `data.Run` to use closure-scoping.
 
 ```go
 func GetUserByID(ctx context.Context, out any, id int64) (err error) {
 
   // scope.End is automatically handled
   return data.Run(ctx, func(scope *data.Scope) error {
-
     err := scope.Get(out, "SELECT * FROM users WHERE id = $1", id)
     if err != nil {
       return err
@@ -482,6 +485,7 @@ func GetUserByID(ctx context.Context, out any, id int64) (err error) {
   scope, cancel, err := data.NewScopeErr(ctx, &err)
   defer cancel()
 
+  // watch out for the scope of the `err` variable.
   err = scope.Get(out, "SELECT * FROM users WHERE id = $1", id)
   if err != nil {
     return err
@@ -535,7 +539,7 @@ var sqlMigrations embed.FS
 func main() {
   err := app.Build().
     AddDefaults().
-    EmbedMigrations(sqlMigrations).
+    EmbedMigrations(sqlMigrations). // <-- Add this line
 
     // ...
 
