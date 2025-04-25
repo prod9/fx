@@ -71,7 +71,7 @@ func CreateDB(cfg *config.Source) error {
 		return fmt.Errorf("database: %w", err)
 	}
 
-	if _, err = db.Exec("CREATE DATABASE " + dbName); err != nil {
+	if _, err = db.Exec("CREATE DATABASE \"" + dbName + "\""); err != nil {
 		return fmt.Errorf("database: %w", err)
 	} else {
 		return nil
