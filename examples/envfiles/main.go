@@ -17,7 +17,7 @@ var (
 
 func main() {
 	src := config.Configure()
-	config.Set(src, Name1, "Forced")
+	config.Set(src, Name1, "Hardcoded")
 
 	fmt.Println(config.Get(src, Name1))
 	fmt.Println(config.Get(src, Name2))

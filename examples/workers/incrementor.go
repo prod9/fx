@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"fx.prodigy9.co/data"
+	"fx.prodigy9.co/fxlog"
 	"fx.prodigy9.co/worker"
 )
 
@@ -35,8 +35,7 @@ func (r *Incrementer) Run(ctx context.Context) (err error) {
 		return err
 	}
 
-	log.Println("updated", counter.Name, "to", counter.Count)
-
+	fxlog.Log("updated "+counter.Name, fxlog.Int64("to", counter.Count))
 	worker.ScheduleIn(ctx, r, 1*time.Second)
 	return nil
 }
