@@ -452,7 +452,7 @@ func GetUserByID(ctx context.Context, out any, id int64) (err error) {
 }
 ```
 
-In recent versions, there are 2 new ays, both a little bit more ergonomic to use.
+In recent versions, there are 2 new ways, both a little bit more ergonomic to use.
 First, you can use `data.Run` to use closure-scoping.
 
 ```go
@@ -573,6 +573,46 @@ Other commands include:
 
 Sets `ALWAYS_YES=1` to skip confirmation prompts. This is useful for CI/CD pipelines.
 
+## Logging
+
+Logging in fxlog is done using the `fxlog` subpackage. It is pre-configured to output
+pretty structured logs by default. It has 3 basic functions, mirroring standard library
+log package:
+
+* `fxlog.Log` - Logs general messages.
+* `fxlog.Error` - Logs errors.
+* `fxlog.Fatal` - Logs fatal errors and exits the application.
+
+For `Error` and `Fatal`, there are also `Errorf` and `Fatalf` variants that simply calls
+`fmt.Errorf` to format the message for you.
+
+Log output is set to the default `zerolog` logger by default. There are a few ways to
+override the output and customize logging behavior:
+
+1. Switch the sink: set `LOG_SINK=slog` to redirect FX log outputs to `log/slog` default
+   logger and configure `log/slog` normally as you would do in any other Go application.
+
+2. Set a custom `log/slog` or `zerolog` logger (initialized outside of fx) by using
+   `SetSink`:
+
+```go
+// zerolog
+zl := zerolog.New()
+fxlog.SetSink(fxlog.NewZerlogSink(zl))
+
+// slog
+sl := slog.New(slog.NewTextHandler(os.Stderr, nil))
+fxlog.SetSink(fxlog.NewSlogSink(sl))
+```
+
+3. Create your own `fxlog.Sink` implementation for maximum customization or if you wish
+   to use a different logging library that's not provided out of the box:
+
+```go
+mysink := NewCustomSink()
+fxlog.SetSink(mysink)
+```
+
 ## Misc
 
 Couple of other useful packages (docs tbd later):
@@ -584,4 +624,6 @@ Couple of other useful packages (docs tbd later):
 * `fx.prodigy9.co/passwords` - BCrypt-hash passwords.
 * `fx.prodigy9.co/secret` - Pass secret message around the internet safely.
 * `fx.prodigy9.co/validate` - Validations.
-* `fx.prodigy9.co/worker` - PSQL-backed Background worker (alpha, it works, but not fully tested).
+* `fx.prodigy9.co/worker` - PSQL-backed Background worker (alpha, it works, but not fully
+  tested).
+
