@@ -3,12 +3,13 @@ package data
 import (
 	"context"
 	"fmt"
+
 	"fx.prodigy9.co/cmd/prompts"
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/errutil"
-	"log"
+	"fx.prodigy9.co/fxlog"
 
 	"github.com/spf13/cobra"
 )
@@ -38,7 +39,7 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 
 	scope, err := data.NewScope(context.Background(), db)
 	if err != nil {
-		log.Fatalln("db connection error", err)
+		fxlog.Fatalf("db connection failed: %w", err)
 	} else {
 		defer scope.End(&err)
 	}
@@ -50,7 +51,7 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 	}
 
 	if len(plans) == 0 {
-		log.Println("no changes")
+		fxlog.Log("no changes")
 		return nil
 	}
 
@@ -59,24 +60,25 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 	}
 
 	if dirty {
-		log.Println("some migrations are missing or have changed content")
+		fxlog.Log("migrations are missing or have changed content")
 		if !prompt.YesNo("proceed anyway") {
 			return nil
 		}
 	}
 
-	log.Println(len(plans), "migrations planned")
+	fxlog.Log("migrations planned", fxlog.Int("migrations", len(plans)))
 	if !prompt.YesNo("apply changes") {
 		return nil
 	}
 
 	for _, plan := range plans {
 		fmt.Println(plan)
-		if err := migrator.Apply(scope.Context(), plan); err != nil {
-			log.Fatalln("failed to run migration", err)
+		if err = migrator.Apply(scope.Context(), plan); err != nil {
+			fxlog.Fatalf("migration failed: %w", err)
+			return
 		}
 	}
 
-	log.Println(len(plans), "migration(s) applied")
+	fxlog.Log("migration(s) applied", fxlog.Int("migrations", len(plans)))
 	return nil
 }

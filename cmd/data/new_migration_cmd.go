@@ -3,7 +3,6 @@ package data
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 
 	"github.com/spf13/cobra"
 )
@@ -68,7 +68,7 @@ func runNewMigrationCmd(cmd *cobra.Command, args []string) (err error) {
 	fmt.Fprintln(os.Stdout, uppath)
 	fmt.Fprintln(os.Stdout, downpath)
 	if !prompt.YesNo("create these files") {
-		log.Fatalln("aborted")
+		fxlog.Fatalf("aborted")
 		return
 	}
 

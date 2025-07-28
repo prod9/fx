@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"runtime"
 	"strings"
 
 	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/fxlog"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -24,7 +24,7 @@ var (
 
 func MustConnect(cfg *config.Source) *sqlx.DB {
 	if db, err := Connect(cfg); err != nil {
-		log.Panicln(err)
+		fxlog.Fatalf("data: connection failed: %w", err)
 		return nil
 	} else {
 		return db

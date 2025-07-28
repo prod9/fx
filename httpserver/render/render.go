@@ -3,11 +3,11 @@ package render
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 	"fx.prodigy9.co/httpserver/httperrors"
 )
 
@@ -45,8 +45,8 @@ func Error(resp http.ResponseWriter, r *http.Request, status int, err error) {
 
 	errObj := errutil.Decorate(err)
 	if err_ := json.NewEncoder(resp).Encode(errObj); err_ != nil {
-		log.Printf("%s %s %s - %s\n",
-			r.RemoteAddr, r.Method, r.RequestURI, err_.Error())
+		fxlog.Errorf("render: %s %s: json encoding error: %w",
+			r.Method, r.RequestURI, err_)
 	}
 }
 

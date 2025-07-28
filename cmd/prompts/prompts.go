@@ -1,10 +1,10 @@
 package prompts
 
 import (
-	"log"
 	"strings"
 
 	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/fxlog"
 	"fx.prodigy9.co/slices"
 	"github.com/pterm/pterm"
 )
@@ -51,7 +51,7 @@ func (s *Session) Confirm(what, yes, no string) bool {
 		WithRejectText(no).
 		Show()
 	if err != nil {
-		log.Fatalln(err)
+		bail(err)
 		return false
 	} else {
 		return result
@@ -74,7 +74,7 @@ func (s *Session) SensitiveStr(item string) string {
 		WithDefaultText(item).
 		Show()
 	if err != nil {
-		log.Fatalln(err)
+		bail(err)
 		return ""
 	} else {
 		return strings.TrimSpace(result)
@@ -100,7 +100,7 @@ func (s *Session) Str(item string) string {
 		WithDefaultText(item).
 		Show()
 	if err != nil {
-		log.Fatalln(err)
+		bail(err)
 		return ""
 	} else {
 		return strings.TrimSpace(result)
@@ -122,7 +122,7 @@ func (s *Session) List(question, def string, options []string) string {
 		WithDefaultOption(def).
 		Show()
 	if err != nil {
-		log.Fatalln(err)
+		bail(err)
 		return ""
 	} else {
 		return result
@@ -143,4 +143,8 @@ func GenList[T any](s *Session, question string, def T, options []T, namer func(
 	}
 
 	return def
+}
+
+func bail(err error) {
+	fxlog.Fatalf("prompt: %w", err)
 }

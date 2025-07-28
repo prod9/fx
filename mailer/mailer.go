@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 )
 
 var PostmarkTokenConfig = config.Str("POSTMARK_TOKEN")
@@ -79,6 +79,6 @@ func Send(cfg *config.Source, mail *Mail) (err error) {
 		return fmt.Errorf("postmark: status %d: %s", resp.StatusCode, string(buf))
 	}
 
-	log.Println("postmark:", string(buf))
+	fxlog.Log("postmark", fxlog.String("response", string(buf)))
 	return nil
 }

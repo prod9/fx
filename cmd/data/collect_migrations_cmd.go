@@ -2,7 +2,6 @@ package data
 
 import (
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -10,6 +9,7 @@ import (
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 	"github.com/spf13/cobra"
 )
 
@@ -44,12 +44,18 @@ func runCollectMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
 		if err := copyFile(outUpPath, upPath); err != nil {
 			return err
 		}
-		log.Println(upPath, "=>", outUpPath)
-
 		if err := copyFile(outDownPath, downPath); err != nil {
 			return err
 		}
-		log.Println(downPath, "=>", outDownPath)
+
+		fxlog.Log("copy",
+			fxlog.String("from", upPath),
+			fxlog.String("to", outUpPath),
+		)
+		fxlog.Log("copy",
+			fxlog.String("from", downPath),
+			fxlog.String("to", outDownPath),
+		)
 	}
 
 	return nil

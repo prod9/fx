@@ -1,9 +1,8 @@
 package main
 
 import (
-	"log"
-
 	"fx.prodigy9.co/app"
+	"fx.prodigy9.co/fxlog"
 	"fx.prodigy9.co/httpserver/controllers"
 	"go.jonnrb.io/vanity"
 )
@@ -16,6 +15,6 @@ func main() {
 		Controllers(controllers.FromHandler("/*", handler)).
 		Start()
 	if err != nil {
-		log.Fatalln(err)
+		fxlog.Fatal(err)
 	}
 }

@@ -1,11 +1,11 @@
 package httpserver
 
 import (
-	"log"
 	"net/http"
 
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/ctrlc"
+	"fx.prodigy9.co/fxlog"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
 	"github.com/go-chi/chi/v5"
@@ -44,7 +44,7 @@ func (s *Server) Start() error {
 		srv.Shutdown(nil)
 	})
 
-	log.Println("listening on " + listenAddr)
+	fxlog.Log("listening", fxlog.String("addr", listenAddr))
 	err := srv.ListenAndServe()
 	if err == http.ErrServerClosed {
 		return nil

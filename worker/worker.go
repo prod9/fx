@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"fx.prodigy9.co/ctrlc"
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 )
 
 var (
@@ -89,7 +89,10 @@ func ScheduleIn(ctx context.Context, job Interface, d time.Duration) (int64, err
 	return ScheduleAt(ctx, job, time.Now().Add(d))
 }
 func ScheduleAt(ctx context.Context, job Interface, t time.Time) (int64, error) {
-	log.Println("scheduling", job.Name(), "at", t.Format(time.RFC3339))
+	fxlog.Log("scheduling",
+		fxlog.String("job", job.Name()),
+		fxlog.Time("at", t),
+	)
 
 	if payload, err := json.Marshal(job); err != nil {
 		return 0, err
@@ -148,9 +151,18 @@ func (w *Worker) Start() (err error) {
 
 	ctrlc.Do(w.Stop)
 
-	log.Println("worker started")
+	fxlog.Log("worker started")
 	<-ctx.Done()
-	return ctx.Err()
+
+	if ctx.Err() != nil {
+		if err = context.Cause(ctx); err != nil {
+			return err
+		} else {
+			return ctx.Err()
+		}
+	} else {
+		return nil
+	}
 }
 
 func (w *Worker) Stop() {
@@ -199,14 +211,19 @@ func (w *Worker) workOnce(ctx context.Context) workerSignal {
 		return signalIdled
 	}
 
-	log.Printf("running %s #%d", job.Name, job.ID)
+	fxlog.Log("running",
+		fxlog.String("job", job.Name),
+		fxlog.Int64("id", job.ID),
+	)
 	start := time.Now()
 
 	// we got one "running" job to process
 	if err := w.processJob(ctx, job); err != nil {
-		log.Printf("failed %s #%d in %s: %s\n",
-			job.Name, job.ID,
-			time.Now().Sub(start).String(), err.Error(),
+		fxlog.Log("failed",
+			fxlog.String("job", job.Name),
+			fxlog.Int64("id", job.ID),
+			fxlog.Duration("duration", time.Since(start)),
+			fxlog.Any("error", err),
 		)
 		if err := markJobAsFailed(ctx, job.ID, err.Error()); err != nil {
 			w.cancel(err)
@@ -214,9 +231,10 @@ func (w *Worker) workOnce(ctx context.Context) workerSignal {
 		}
 
 	} else {
-		log.Printf("completed %s #%d in %s",
-			job.Name, job.ID,
-			time.Now().Sub(start).String(),
+		fxlog.Log("completed",
+			fxlog.String("job", job.Name),
+			fxlog.Int64("id", job.ID),
+			fxlog.Duration("duration", time.Since(start)),
 		)
 		if err := markJobAsCompleted(ctx, job.ID); err != nil {
 			w.cancel(err)

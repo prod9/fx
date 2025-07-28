@@ -2,8 +2,13 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"strings"
+
+	// NOTE: Sadly, we cannot use fxlog here because it'd cause import cycle.
+	// and `config` is intended to be the first package to initializes anyway.
+	//
+	// Perhaps we should make fxlog not dependent on `config`.
+	"log"
 )
 
 func GetAny(src *Source, v _Var) any {

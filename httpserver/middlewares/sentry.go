@@ -2,11 +2,11 @@ package middlewares
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"sync"
 
 	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/fxlog"
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 )
@@ -25,7 +25,7 @@ type sentryContainer struct {
 
 func (c *sentryContainer) get(cfg *config.Source) (*sentry.Hub, *sentryhttp.Handler) {
 	if err := c.tryGetErr(); err != nil {
-		log.Printf("sentry: %s", err)
+		fxlog.Errorf("sentry: initialization failed: %w", err)
 		return nil, nil
 	} else if client, handler := c.tryGet(); client != nil {
 		return client, handler
@@ -53,7 +53,7 @@ func (c *sentryContainer) initialize(cfg *config.Source) {
 
 	dsn := config.Get(cfg, SentryDSNConfig)
 	if dsn == "" {
-		c.err = errors.New("API_SENTRY_DSN not configured")
+		c.err = errors.New(SentryDSNConfig.Name() + " not set")
 		return
 	}
 
@@ -66,7 +66,6 @@ func (c *sentryContainer) initialize(cfg *config.Source) {
 	hub := sentry.NewHub(client, sentry.NewScope())
 	handler := sentryhttp.New(sentryhttp.Options{Repanic: true})
 	c.hub, c.handler = hub, handler
-	return
 }
 
 func Sentry(cfg *config.Source) func(http.Handler) http.Handler {
@@ -75,7 +74,7 @@ func Sentry(cfg *config.Source) func(http.Handler) http.Handler {
 	return func(handler http.Handler) http.Handler {
 		sentryHub, sentryHandler := container.get(cfg)
 		if sentryHub == nil || sentryHandler == nil {
-			log.Println("sentry: not setup")
+			fxlog.Log("sentry: not configured")
 			return handler
 		}
 

@@ -1,11 +1,10 @@
 package data
 
 import (
-	"log"
-
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +21,7 @@ func runCreateDBCmd(cmd *cobra.Command, args []string) (err error) {
 	if err = data.CreateDB(config.Configure()); err != nil {
 		return err
 	} else {
-		log.Println("database created.")
+		fxlog.Log("database created")
 		return nil
 	}
 }

@@ -3,13 +3,13 @@ package data
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"fx.prodigy9.co/cmd/prompts"
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 	"github.com/spf13/cobra"
 )
 
@@ -39,14 +39,14 @@ func runSyncMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
 
 	plans, dirty, err := mig.Plan(ctx, migrator.IntentSync)
 	if !dirty {
-		log.Println("migrations are up-to-date")
+		fxlog.Log("migrations up-to-date")
 		return nil
 	}
 
 	for _, plan := range plans {
 		fmt.Println(plan)
 	}
-	log.Println(len(plans), "migrations to sync")
+	fxlog.Log("migrations changed", fxlog.Int("migrations", len(plans)))
 	if !prompt.YesNo("apply changes") {
 		return nil
 	}
@@ -54,10 +54,11 @@ func runSyncMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
 	for _, plan := range plans {
 		fmt.Println(plan)
 		if err := mig.Apply(ctx, plan); err != nil {
-			log.Fatalln("failed to run migration", err)
+			fxlog.Fatalf("sync failed: %w", err)
+			return err
 		}
 	}
 
-	log.Println(len(plans), "migration(s) synchronized")
+	fxlog.Log("migration(s) synchronized", fxlog.Int("migrations", len(plans)))
 	return nil
 }

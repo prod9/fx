@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/gob"
 	"errors"
-	"log"
 	"strings"
 	"sync"
 	"time"
 
 	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/fxlog"
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -81,7 +81,7 @@ func (r *redis[T]) fallback(ctx context.Context, initer Initializer[T], err erro
 	// client seems to be faulty, try to disconnect in the background so we re-connect
 	// again on the next request
 	go r.disconnect(context.Background())
-	log.Println("redis cache:", err)
+	fxlog.Errorf("redis cache: %w", err)
 	result, _, outerr = initer()
 	return
 }
