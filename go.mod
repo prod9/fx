@@ -18,6 +18,7 @@ require (
 	github.com/pterm/pterm v0.12.81
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/rs/cors v1.11.1
+	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.9.0
 	github.com/typesense/typesense-go/v2 v2.0.0
@@ -36,6 +37,8 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/minio/crc64nvme v1.0.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
