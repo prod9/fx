@@ -19,7 +19,11 @@ const (
 			created_at   TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP),
 			scheduled_at TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP),
 			updated_at   TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP)
-		);`
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_jobs_name_status ON jobs(name, status);
+		CREATE INDEX IF NOT EXISTS idx_jobs_status_scheduled_at ON jobs(status, scheduled_at);
+		`
 
 	FindPendingJobByNameSQL = `
 		SELECT * FROM jobs
