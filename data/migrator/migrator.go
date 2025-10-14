@@ -18,15 +18,18 @@ const (
 			up_sql   text NOT NULL,
 			down_sql text NOT NULL
 		);`
+
 	ListMigrationsSQL = `
 		SELECT *
 		FROM migrations
 		ORDER BY name ASC`
+
 	UpdateMigrationSQL = `
 		INSERT INTO migrations (name, up_sql, down_sql)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (name) DO UPDATE
 		SET up_sql = $2, down_sql = $3`
+
 	PruneMigrationSQL = `
 		DELETE FROM migrations
 		WHERE name = $1`

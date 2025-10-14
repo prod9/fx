@@ -34,6 +34,17 @@ func FromConfig(src *config.Source) Source {
 func FromAuto(cfg *config.Source) Source {
 	return func() ([]Migration, error) { return LoadAuto(cfg) }
 }
+func FromSQL(name, upSQL, downSQL string) Source {
+	upSQL = strings.TrimSpace(upSQL)
+	downSQL = strings.TrimSpace(downSQL)
+	return func() ([]Migration, error) {
+		return []Migration{{
+			Name:    name,
+			UpSQL:   upSQL,
+			DownSQL: downSQL,
+		}}, nil
+	}
+}
 
 // Embed provide a way for compiled Go programs to embed migration files directly into the
 // binary so that we don't have to take care of the logistics of putting them on prod
