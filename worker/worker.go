@@ -176,7 +176,7 @@ func (w *Worker) Stop() {
 
 func (w *Worker) work(ctx context.Context) {
 	for {
-		// keep processing jobs, if there are jobs to process
+		// keep processing jobs, if there are jobs to process.
 		// idle and poll only when there are no more jobs to process
 		sig := w.workOnce(ctx)
 		for sig == signalWorkDone {
@@ -187,14 +187,12 @@ func (w *Worker) work(ctx context.Context) {
 		case signalStop:
 			return
 		case signalIdled:
-			continue
-		}
-
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(w.interval):
-			continue
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(w.interval):
+				continue
+			}
 		}
 	}
 }
