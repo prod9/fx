@@ -5,11 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/url"
 	"runtime"
-	"strings"
 
 	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/data/dbname"
 	"fx.prodigy9.co/fxlog"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -53,28 +52,48 @@ func configureDB(cfg *config.Source, db *sqlx.DB) {
 }
 
 func CreateDB(cfg *config.Source) error {
-	rawURL := config.Get(cfg, DatabaseURLConfig)
-
-	parsedURL, err := url.Parse(rawURL)
+	conn, dbName, err := getAdminConnection(cfg)
 	if err != nil {
 		return fmt.Errorf("database: %w", err)
 	}
 
-	dbName := parsedURL.Path
-	if strings.HasPrefix(dbName, "/") {
-		dbName = dbName[1:]
-	}
-	parsedURL.Path = "/postgres" // since our db is yet to be created
-
-	db, err := sqlx.Open("pgx", parsedURL.String())
-	if err != nil {
-		return fmt.Errorf("database: %w", err)
-	}
-
-	if _, err = db.Exec("CREATE DATABASE " + dbName); err != nil {
+	if _, err := conn.Exec("CREATE DATABASE " + dbName); err != nil {
 		return fmt.Errorf("database: %w", err)
 	} else {
 		return nil
+	}
+}
+
+func DropDB(cfg *config.Source) error {
+	conn, dbName, err := getAdminConnection(cfg)
+	if err != nil {
+		return fmt.Errorf("database: %w", err)
+	}
+
+	if _, err := conn.Exec("DROP DATABASE " + dbName); err != nil {
+		return fmt.Errorf("database: %w", err)
+	} else {
+		return nil
+	}
+}
+
+func getAdminConnection(cfg *config.Source) (*sqlx.DB, string, error) {
+	rawURL := config.Get(cfg, DatabaseURLConfig)
+
+	name, err := dbname.From(rawURL)
+	if err != nil {
+		return nil, "", err
+	}
+
+	defDBURL, err := dbname.SetDefaultDB(rawURL)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if db, err := sqlx.Open("pgx", defDBURL); err != nil {
+		return nil, "", err
+	} else {
+		return db, name, nil
 	}
 }
 
