@@ -8,7 +8,6 @@ import (
 	"fx.prodigy9.co/cmd/cmdutil"
 	"fx.prodigy9.co/cmd/prompts"
 	"fx.prodigy9.co/config"
-	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/fxlog"
 	"github.com/spf13/cobra"
@@ -22,17 +21,12 @@ var recoverMigrationsCmd = &cobra.Command{
 
 func runRecoverMigrationsCmd(cmd *cobra.Command, args []string) {
 	var (
-		_, cfg = cmdutil.NewBasicContext()
-		prompt = prompts.New(cfg, args)
-		dir    = config.Get(cfg, migrator.MigrationPathConfig)
+		ctx, _ = cmdutil.NewDataContext()
+		prompt = prompts.New(config.FromContext(ctx), args)
+		outdir = prompt.Str("output dir")
 	)
 
-	db, err := data.Connect(cfg)
-	if err != nil {
-		fxlog.Fatalf("recover-migrations: %w", err)
-	}
-
-	migrations, err := migrator.RecoverMigrations(db)
+	migrations, err := migrator.Load(migrator.FromDB(ctx))
 	if err != nil {
 		fxlog.Fatalf("recover-migrations: %w", err)
 	}
@@ -42,27 +36,25 @@ func runRecoverMigrationsCmd(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	recovered := prompts.GenList(
-		prompt,
-		"which migration to recover?",
-		migrations[len(migrations)-1],
-		migrations,
-		func(m migrator.Migration) string { return m.Name },
-	)
-
-	if !prompt.YesNo("recover migration") {
+	for _, migration := range migrations {
+		fmt.Println(migration.Name)
+	}
+	fxlog.Log("migrations to recover", fxlog.Int("count", len(migrations)))
+	if !prompt.YesNo("recover all migrations") {
 		return
 	}
 
-	upfile := filepath.Join(dir, recovered.Name+migrator.UpExt)
-	fmt.Fprintln(os.Stdout, upfile)
-	if err := os.WriteFile(upfile, []byte(recovered.UpSQL), 0644); err != nil {
-		fxlog.Fatalf("recover-migrations: %w", err)
-	}
+	for _, migration := range migrations {
+		upfile := filepath.Join(outdir, migration.Name+migrator.UpExt)
+		fmt.Fprintln(os.Stdout, upfile)
+		if err := os.WriteFile(upfile, []byte(migration.UpSQL), 0644); err != nil {
+			fxlog.Fatalf("recover-migrations: %w", err)
+		}
 
-	downfile := filepath.Join(dir, recovered.Name+migrator.DownExt)
-	fmt.Fprintln(os.Stdout, downfile)
-	if err := os.WriteFile(downfile, []byte(recovered.DownSQL), 0644); err != nil {
-		fxlog.Fatalf("recover-migrations: %w", err)
+		downfile := filepath.Join(outdir, migration.Name+migrator.DownExt)
+		fmt.Fprintln(os.Stdout, downfile)
+		if err := os.WriteFile(downfile, []byte(migration.DownSQL), 0644); err != nil {
+			fxlog.Fatalf("recover-migrations: %w", err)
+		}
 	}
 }
