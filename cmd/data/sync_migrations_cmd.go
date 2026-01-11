@@ -47,7 +47,7 @@ func runSyncMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
 		fmt.Println(plan)
 	}
 	fxlog.Log("migrations changed", fxlog.Int("migrations", len(plans)))
-	if !prompt.YesNo("apply changes") {
+	if !prompt.YesNo("synchronize migration content") {
 		return nil
 	}
 

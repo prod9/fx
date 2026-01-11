@@ -7,7 +7,7 @@ import (
 )
 
 var rollbackCmd = &cobra.Command{
-	Use:   "rollback [middlewares-dir]",
+	Use:   "rollback",
 	Short: "Revert one previously ran migration.",
 	RunE:  runRollbackCmd,
 }

@@ -15,7 +15,7 @@ import (
 )
 
 var migrateCmd = &cobra.Command{
-	Use:   "migrate [migrations-dir]",
+	Use:   "migrate",
 	Short: "Runs all migration scripts in the configured migrations dir.",
 	RunE:  runMigrateCmd,
 }
@@ -61,13 +61,13 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 
 	if dirty {
 		fxlog.Log("migrations are missing or have changed content")
-		if !prompt.YesNo("proceed anyway") {
+		if !prompt.YesNo("proceed with dirty migrations") {
 			return nil
 		}
 	}
 
 	fxlog.Log("migrations planned", fxlog.Int("migrations", len(plans)))
-	if !prompt.YesNo("apply changes") {
+	if !prompt.YesNo("apply migrations") {
 		return nil
 	}
 

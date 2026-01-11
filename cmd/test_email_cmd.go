@@ -10,7 +10,7 @@ import (
 )
 
 var TestEmailCmd = &cobra.Command{
-	Use:   "test-email",
+	Use:   "test-email [email]",
 	Short: "Sends a test email to check if SMTP configuration works",
 	RunE:  runTestEmailCmd,
 }
