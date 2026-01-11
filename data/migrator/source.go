@@ -1,6 +1,7 @@
 package migrator
 
 import (
+	"context"
 	"embed"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/data"
 )
 
 var (
@@ -43,6 +45,19 @@ func FromSQL(name, upSQL, downSQL string) Source {
 			UpSQL:   upSQL,
 			DownSQL: downSQL,
 		}}, nil
+	}
+}
+
+func FromDB(ctx context.Context) Source {
+	return func() ([]Migration, error) {
+		var result []Migration
+		err := data.Run(ctx, func(scope data.Scope) error {
+			if err := scope.Exec(CreateMigrationsTableSQL); err != nil {
+				return err
+			}
+			return scope.Select(&result, ListMigrationsSQL)
+		})
+		return result, err
 	}
 }
 

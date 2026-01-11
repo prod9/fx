@@ -65,7 +65,7 @@ func (m *Migrator) Plan(ctx context.Context, intent Intent) (actions []Plan, dir
 
 	if inFiles, err = Load(m.src); err != nil {
 		return
-	} else if inDB, err = m.loadFromDB(scope.Context()); err != nil {
+	} else if inDB, err = Load(FromDB(scope.Context())); err != nil {
 		return
 	}
 
@@ -238,23 +238,6 @@ func (m *Migrator) Apply(ctx context.Context, plan Plan) (err error) {
 
 	default:
 		err = fmt.Errorf("unknown Action in plan: %d", plan.Action)
-	}
-
-	return
-}
-
-func (m *Migrator) loadFromDB(ctx context.Context) (result []Migration, err error) {
-	var scope data.Scope
-	if scope, err = data.NewScope(ctx, m.db); err != nil {
-		return nil, err
-	} else {
-		defer scope.End(&err)
-	}
-
-	if err = scope.Exec(CreateMigrationsTableSQL); err != nil {
-		return
-	} else if err = scope.Select(&result, ListMigrationsSQL); err != nil {
-		return
 	}
 
 	return
