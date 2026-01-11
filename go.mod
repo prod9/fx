@@ -6,15 +6,12 @@ require (
 	github.com/chakrit/gendiff v0.0.0-20190724171441-c6e430f125ca
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/getsentry/sentry-go v0.34.1
-	github.com/ggicci/httpin v0.10.1
 	github.com/go-chi/chi/v5 v5.2.2
-	github.com/go-playground/locales v0.14.1
-	github.com/go-playground/universal-translator v0.18.1
-	github.com/go-playground/validator/v10 v10.14.1
 	github.com/gobuffalo/flect v1.0.3
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
+	github.com/mattn/go-isatty v0.0.20
 	github.com/pterm/pterm v0.12.81
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/rs/cors v1.11.1
@@ -38,7 +35,6 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/minio/crc64nvme v1.0.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
@@ -56,12 +52,10 @@ require (
 	github.com/containerd/console v1.0.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/minio/minio-go/v7 v7.0.89
