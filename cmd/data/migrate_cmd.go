@@ -1,11 +1,10 @@
 package data
 
 import (
-	"context"
 	"fmt"
 
+	"fx.prodigy9.co/cmd/cmdutil"
 	"fx.prodigy9.co/cmd/prompts"
-	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/data/migrator"
 	"fx.prodigy9.co/errutil"
@@ -17,19 +16,21 @@ import (
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
 	Short: "Runs all migration scripts in the configured migrations dir.",
-	RunE:  runMigrateCmd,
+	Run:   runMigrateCmd,
 }
 
-func runMigrateCmd(cmd *cobra.Command, args []string) error {
-	return runMigration(migrator.IntentMigrate, args)
+func runMigrateCmd(cmd *cobra.Command, args []string) {
+	if err := runMigration(migrator.IntentMigrate, args); err != nil {
+		fxlog.Fatalf("migrate: %w", err)
+	}
 }
 
 func runMigration(intent migrator.Intent, args []string) (err error) {
 	defer errutil.Wrap("migrate", &err)
 
 	var (
-		cfg    = config.Configure()
-		prompt = prompts.New(cfg, args)
+		ctx, cfg = cmdutil.NewBasicContext()
+		prompt   = prompts.New(cfg, args)
 	)
 
 	db, err := data.Connect(cfg)
@@ -37,9 +38,9 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 		return err
 	}
 
-	scope, err := data.NewScope(context.Background(), db)
+	scope, err := data.NewScope(ctx, db)
 	if err != nil {
-		fxlog.Fatalf("db connection failed: %w", err)
+		return err
 	} else {
 		defer scope.End(&err)
 	}
@@ -74,8 +75,7 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 	for _, plan := range plans {
 		fmt.Println(plan)
 		if err = migrator.Apply(scope.Context(), plan); err != nil {
-			fxlog.Fatalf("migration failed: %w", err)
-			return
+			return err
 		}
 	}
 

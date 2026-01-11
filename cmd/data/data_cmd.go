@@ -14,9 +14,9 @@ func init() {
 		migrateCmd,
 		newMigrationCmd,
 		psqlCmd,
-		recoverMigrationCmd,
+		recoverMigrationsCmd,
 		rollbackCmd,
 		listMigrationsCmd,
-		syncMigrationsCmd,
+		resyncMigrationsCmd,
 	)
 }

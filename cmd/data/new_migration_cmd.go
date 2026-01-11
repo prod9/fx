@@ -11,7 +11,6 @@ import (
 	"fx.prodigy9.co/cmd/prompts"
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data/migrator"
-	"fx.prodigy9.co/errutil"
 	"fx.prodigy9.co/fxlog"
 
 	"github.com/spf13/cobra"
@@ -19,7 +18,7 @@ import (
 
 const upMigrationTemplate = `-- vim: filetype=SQL
 CREATE TABLE dummy (
-	id TEXT PRIMARY KEY,
+	id SERIAL PRIMARY KEY,
 	created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 `
@@ -29,14 +28,12 @@ DROP TABLE dummy;
 
 var newMigrationCmd = &cobra.Command{
 	Use:     "new-migration (name)",
-	Aliases: []string{"new-migrate"},
+	Aliases: []string{"new-migrate", "new"},
 	Short:   "Creates a new migration file with timestamps and the given name",
-	RunE:    runNewMigrationCmd,
+	Run:     runNewMigrationCmd,
 }
 
-func runNewMigrationCmd(cmd *cobra.Command, args []string) (err error) {
-	defer errutil.Wrap("new-migration", &err)
-
+func runNewMigrationCmd(cmd *cobra.Command, args []string) {
 	var (
 		cfg    = config.Configure()
 		prompt = prompts.New(cfg, args)
@@ -47,7 +44,7 @@ func runNewMigrationCmd(cmd *cobra.Command, args []string) (err error) {
 	subdirs := []string{"."}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return err
+		fxlog.Fatalf("new-migration: %w", err)
 	}
 
 	for _, entry := range entries {
@@ -62,20 +59,19 @@ func runNewMigrationCmd(cmd *cobra.Command, args []string) (err error) {
 	// create the migration files
 	uppath, downpath, err := migrator.MigrationPath(dir, name)
 	if err != nil {
-		return err
+		fxlog.Fatalf("new-migration: %w", err)
 	}
 
 	fmt.Fprintln(os.Stdout, uppath)
 	fmt.Fprintln(os.Stdout, downpath)
 	if !prompt.YesNo("create these files") {
-		fxlog.Fatalf("aborted")
-		return
+		fxlog.Fatalf("new-migration: aborted")
 	}
 
 	if err := ioutil.WriteFile(uppath, []byte(upMigrationTemplate), 0644); err != nil {
-		return err
+		fxlog.Fatalf("new-migration: %w", err)
 	} else if err := ioutil.WriteFile(downpath, []byte(downMigrationTemplate), 0644); err != nil {
-		return err
+		fxlog.Fatalf("new-migration: %w", err)
 	}
 
 	editor := os.Getenv("EDITOR")
@@ -86,5 +82,7 @@ func runNewMigrationCmd(cmd *cobra.Command, args []string) (err error) {
 	proc := exec.Command(editor, uppath, downpath)
 	proc.Stdin = os.Stdin
 	proc.Stdout = os.Stdout
-	return proc.Run()
+	if err := proc.Run(); err != nil {
+		fxlog.Fatalf("new-migration: %w", err)
+	}
 }

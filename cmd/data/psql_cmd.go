@@ -4,27 +4,28 @@ import (
 	"os"
 	"os/exec"
 
+	"fx.prodigy9.co/cmd/cmdutil"
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
-	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 	"github.com/spf13/cobra"
 )
 
 var psqlCmd = &cobra.Command{
 	Use:   "psql",
 	Short: "Starts a psql shell with the DATABASE_URL config",
-	RunE:  runPSQLCmd,
+	Run:   runPSQLCmd,
 }
 
-func runPSQLCmd(cmd *cobra.Command, args []string) (err error) {
-	defer errutil.Wrap("psql", &err)
-
-	cfg := config.Configure()
+func runPSQLCmd(cmd *cobra.Command, args []string) {
+	_, cfg := cmdutil.NewBasicContext()
 	dbURL := config.Get(cfg, data.DatabaseURLConfig)
 
 	// starts a psql shell with the DATABASE_URL config
 	proc := exec.Command("psql", dbURL)
 	proc.Stdin = os.Stdin
 	proc.Stdout = os.Stdout
-	return proc.Run()
+	if err := proc.Run(); err != nil {
+		fxlog.Fatalf("psql: %w", err)
+	}
 }

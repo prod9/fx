@@ -5,41 +5,41 @@ import (
 	"os"
 	"path/filepath"
 
+	"fx.prodigy9.co/cmd/cmdutil"
 	"fx.prodigy9.co/cmd/prompts"
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/data/migrator"
-	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 	"github.com/spf13/cobra"
 )
 
-var recoverMigrationCmd = &cobra.Command{
-	Use:   "recover-migration [name]",
-	Short: "recover migration",
-	RunE:  runRecoverMigrationCmd,
+var recoverMigrationsCmd = &cobra.Command{
+	Use:   "recover-migrations [output-dir]",
+	Short: "Export migration cache from database to files",
+	Run:   runRecoverMigrationsCmd,
 }
 
-func runRecoverMigrationCmd(cmd *cobra.Command, args []string) (err error) {
-	defer errutil.Wrap("migrate", &err)
-
+func runRecoverMigrationsCmd(cmd *cobra.Command, args []string) {
 	var (
-		cfg    = config.Configure()
+		_, cfg = cmdutil.NewBasicContext()
 		prompt = prompts.New(cfg, args)
 		dir    = config.Get(cfg, migrator.MigrationPathConfig)
 	)
 
 	db, err := data.Connect(cfg)
 	if err != nil {
-		return err
+		fxlog.Fatalf("recover-migrations: %w", err)
 	}
 
 	migrations, err := migrator.RecoverMigrations(db)
 	if err != nil {
-		return err
+		fxlog.Fatalf("recover-migrations: %w", err)
 	}
 
 	if len(migrations) == 0 {
-		return fmt.Errorf("no migrations to recover")
+		fxlog.Log("no migrations to recover")
+		return
 	}
 
 	recovered := prompts.GenList(
@@ -50,25 +50,19 @@ func runRecoverMigrationCmd(cmd *cobra.Command, args []string) (err error) {
 		func(m migrator.Migration) string { return m.Name },
 	)
 
-	fmt.Println(migrator.Plan{
-		Action:    migrator.ActionRecover,
-		Migration: recovered,
-	})
 	if !prompt.YesNo("recover migration") {
-		return nil
+		return
 	}
 
 	upfile := filepath.Join(dir, recovered.Name+migrator.UpExt)
 	fmt.Fprintln(os.Stdout, upfile)
 	if err := os.WriteFile(upfile, []byte(recovered.UpSQL), 0644); err != nil {
-		return err
+		fxlog.Fatalf("recover-migrations: %w", err)
 	}
 
 	downfile := filepath.Join(dir, recovered.Name+migrator.DownExt)
 	fmt.Fprintln(os.Stdout, downfile)
 	if err := os.WriteFile(downfile, []byte(recovered.DownSQL), 0644); err != nil {
-		return err
+		fxlog.Fatalf("recover-migrations: %w", err)
 	}
-
-	return nil
 }

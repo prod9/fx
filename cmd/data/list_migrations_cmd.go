@@ -4,31 +4,29 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/cmd/cmdutil"
 	"fx.prodigy9.co/data/migrator"
-	"fx.prodigy9.co/errutil"
+	"fx.prodigy9.co/fxlog"
 	"github.com/spf13/cobra"
 )
 
 var listMigrationsCmd = &cobra.Command{
-	Use:   "list-migrations (outdir)",
+	Use:   "list-migrations",
 	Short: "List all detected migration files.",
-	RunE:  runListMigrationsCmd,
+	Run:   runListMigrationsCmd,
 }
 
-func runListMigrationsCmd(cmd *cobra.Command, args []string) (err error) {
-	defer errutil.Wrap("list-migrations", &err)
-
-	cfg := config.Configure()
+func runListMigrationsCmd(cmd *cobra.Command, args []string) {
+	_, cfg := cmdutil.NewBasicContext()
 	migrations, err := migrator.LoadAuto(cfg)
 	if err != nil {
-		return err
+		fxlog.Fatalf("list-migrations: %w", err)
 	}
 
 	for _, migration := range migrations {
 		upPath := filepath.Join(migration.Dir, migration.Name+migrator.UpExt)
+		downPath := filepath.Join(migration.Dir, migration.Name+migrator.DownExt)
 		fmt.Println(upPath)
+		fmt.Println(downPath)
 	}
-
-	return nil
 }

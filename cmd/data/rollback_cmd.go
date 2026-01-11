@@ -9,9 +9,9 @@ import (
 var rollbackCmd = &cobra.Command{
 	Use:   "rollback",
 	Short: "Revert one previously ran migration.",
-	RunE:  runRollbackCmd,
+	Run:   runRollbackCmd,
 }
 
-func runRollbackCmd(cmd *cobra.Command, args []string) error {
-	return runMigration(migrator.IntentRollback, args)
+func runRollbackCmd(cmd *cobra.Command, args []string) {
+	runMigration(migrator.IntentRollback, args)
 }
