@@ -70,8 +70,8 @@ func (m *Migrator) Plan(ctx context.Context, intent Intent) (actions []Plan, dir
 	}
 
 	switch intent {
-	case IntentSync:
-		return m.planSync(inFiles, inDB)
+	case IntentResync:
+		return m.planResync(inFiles, inDB)
 	case IntentMigrate:
 		return m.planMigrate(inFiles, inDB)
 	case IntentRollback:
@@ -81,7 +81,7 @@ func (m *Migrator) Plan(ctx context.Context, intent Intent) (actions []Plan, dir
 	}
 }
 
-func (m *Migrator) planSync(inFiles []Migration, inDB []Migration) (actions []Plan, dirty bool, err error) {
+func (m *Migrator) planResync(inFiles []Migration, inDB []Migration) (actions []Plan, dirty bool, err error) {
 	diffs := gendiff.Make(migrationDiff{inDB, inFiles})
 
 	for _, d := range diffs {
@@ -98,7 +98,7 @@ func (m *Migrator) planSync(inFiles []Migration, inDB []Migration) (actions []Pl
 				mDB, mFile := inDB[lidx], inFiles[ridx]
 				if mDB.UpSQL != mFile.UpSQL || mDB.DownSQL != mFile.DownSQL {
 					dirty = true
-					actions = append(actions, Plan{ActionUpdate, mFile})
+					actions = append(actions, Plan{ActionResync, mFile})
 				}
 				lidx += 1
 				ridx += 1
@@ -137,7 +137,7 @@ func (m *Migrator) planMigrate(inFiles []Migration, inDB []Migration) (actions [
 				mDB, mFile := inDB[lidx], inFiles[ridx]
 				if mDB.UpSQL != mFile.UpSQL || mDB.DownSQL != mFile.DownSQL {
 					dirty = true
-					actions = append(actions, Plan{ActionUpdate, mFile})
+					actions = append(actions, Plan{ActionResync, mFile})
 				}
 				lidx += 1
 				ridx += 1
@@ -180,7 +180,7 @@ func (m *Migrator) planRollback(inFiles []Migration, inDB []Migration) (actions 
 						err = fmt.Errorf("db state divergence detected, please carefully review and re-sync")
 						return
 					}
-					actions = append(actions, Plan{ActionUpdate, mFile})
+					actions = append(actions, Plan{ActionResync, mFile})
 				}
 				lidx += 1
 				ridx += 1
@@ -209,7 +209,7 @@ func (m *Migrator) Apply(ctx context.Context, plan Plan) (err error) {
 	mig = plan.Migration
 
 	switch plan.Action {
-	case ActionUpdate:
+	case ActionResync:
 		if err = scope.Exec(UpdateMigrationSQL, mig.Name, mig.UpSQL, mig.DownSQL); err != nil {
 			return
 		}
@@ -221,11 +221,6 @@ func (m *Migrator) Apply(ctx context.Context, plan Plan) (err error) {
 		if err = scope.Exec(PruneMigrationSQL, mig.Name); err != nil {
 			return
 		}
-
-	case ActionRecover:
-		// TODO: Probably need to re-architect a bit and make plan self-execute instead
-		//   of switching on Action here. Adding I/O code here feels wrong.
-		return fmt.Errorf("recover plan must be manually implemented")
 
 	case ActionMigrate:
 		if err = scope.Exec(UpdateMigrationSQL, mig.Name, mig.UpSQL, mig.DownSQL); err != nil {

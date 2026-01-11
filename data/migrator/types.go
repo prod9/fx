@@ -8,14 +8,12 @@ import (
 type Action int
 
 const (
-	// ActionUpdate updates the migration content in the database
-	ActionUpdate = Action(iota)
+	// ActionResync updates the migration content in the database
+	ActionResync = Action(iota)
 	// ActionIgnore ignores a new migration file that has yet to be run.
 	ActionIgnore
 	// ActionPrune prunes missing migration entries from the database
 	ActionPrune
-	// Recover the migration content from the database to a file
-	ActionRecover
 	// ActionMigrate runs all migrations that are yet to be ran
 	ActionMigrate
 	// ActionRollback rollbacks the most recent migration
@@ -24,14 +22,12 @@ const (
 
 func (act Action) String() string {
 	switch act {
-	case ActionUpdate:
+	case ActionResync:
 		return "update sql"
 	case ActionIgnore:
 		return "ignore"
 	case ActionPrune:
 		return "remove"
-	case ActionRecover:
-		return "recover"
 	case ActionMigrate:
 		return "migrate"
 	case ActionRollback:
@@ -44,8 +40,7 @@ func (act Action) String() string {
 type Intent int
 
 const (
-	// TODO: IntentRecover ?
-	IntentSync = Intent(iota)
+	IntentResync = Intent(iota)
 	IntentMigrate
 	IntentRollback
 )
