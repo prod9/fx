@@ -575,7 +575,7 @@ Sets `ALWAYS_YES=1` to skip confirmation prompts. This is useful for CI/CD pipel
 
 ## Logging
 
-Logging in fxlog is done using the `fxlog` subpackage. It is pre-configured to output
+Logging in fx is done using the `fxlog` subpackage. It is pre-configured to output
 pretty structured logs by default. It has 3 basic functions, mirroring standard library
 log package:
 
