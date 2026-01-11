@@ -1,11 +1,13 @@
 package prompts
 
 import (
+	"os"
 	"strings"
 
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/fxlog"
 	"fx.prodigy9.co/slices"
+	"github.com/mattn/go-isatty"
 	"github.com/pterm/pterm"
 )
 
@@ -17,15 +19,19 @@ var CIConfig = config.Bool("CI")
 var AlwaysYesConfig = config.Bool("ALWAYS_YES")
 
 type Session struct {
-	cfg  *config.Source
-	args []string
+	cfg         *config.Source
+	args        []string
+	interactive bool
 }
 
 func New(cfg *config.Source, args []string) *Session {
 	if cfg == nil {
 		cfg = config.Configure()
 	}
-	return &Session{cfg, args}
+
+	interactive := !config.Get(cfg, CIConfig) &&
+		isatty.IsTerminal(os.Stdin.Fd())
+	return &Session{cfg, args, interactive}
 }
 
 func (s *Session) Len() int {
@@ -38,11 +44,11 @@ func (s *Session) Args() []string {
 }
 
 func (s *Session) Confirm(what, yes, no string) bool {
-	if config.Get(s.cfg, CIConfig) {
-		return true
-	}
 	if config.Get(s.cfg, AlwaysYesConfig) {
 		return true
+	}
+	if !s.interactive {
+		bailf("confirmation required: %s", what)
 	}
 
 	result, err := pterm.DefaultInteractiveConfirm.
@@ -67,6 +73,9 @@ func (s *Session) SensitiveStr(item string) string {
 		head, tail := s.args[0], s.args[1:]
 		s.args = tail
 		return head
+	}
+	if !s.interactive {
+		bailf("missing: %s", item)
 	}
 
 	result, err := pterm.DefaultInteractiveTextInput.
@@ -95,6 +104,9 @@ func (s *Session) Str(item string) string {
 		s.args = tail
 		return head
 	}
+	if !s.interactive {
+		bailf("missing: %s", item)
+	}
 
 	result, err := pterm.DefaultInteractiveTextInput.
 		WithDefaultText(item).
@@ -114,6 +126,9 @@ func (s *Session) List(question, def string, options []string) string {
 			s.args = tail
 			return head
 		}
+	}
+	if !s.interactive {
+		bailf("invalid option: %s", question)
 	}
 
 	result, err := pterm.DefaultInteractiveSelect.
@@ -147,4 +162,8 @@ func GenList[T any](s *Session, question string, def T, options []T, namer func(
 
 func bail(err error) {
 	fxlog.Fatalf("prompt: %w", err)
+}
+
+func bailf(format string, args ...interface{}) {
+	fxlog.Fatalf("prompt: "+format, args...)
 }
