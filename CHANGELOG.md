@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8.4
+
+* **app/files:** New S3-backed file management package with presigned URLs and PostgreSQL metadata.
+* **migrator:** Fix nil `*sqlx.DB` panic in `FromDB` migration source.
+* **migrator:** Move migrations table bootstrap from `Plan` to `Apply`, making `Plan` read-only.
+* **migrator:** `FromDB` checks table existence via `pg_tables` instead of mutating schema.
+
 ## v0.8.3
 
 * **cmd:** `new-migration` now takes name as the first arg, subdirectory is optional second arg.
