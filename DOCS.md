@@ -571,7 +571,14 @@ Other commands include:
 * `go run . data psql` - Starts a psql shell connecting to the configured database.
 * `go run . data rollback` - Revert one previously ran migration.
 
-Sets `ALWAYS_YES=1` to skip confirmation prompts. This is useful for CI/CD pipelines.
+### Scripting and CI
+
+Data commands use the `cmd/prompts` package for interactive input. To run commands
+non-interactively (e.g. in CI/CD pipelines or scripts), set `CI=1`. In CI mode, all
+required inputs must be provided as positional arguments — if any are missing, the command
+will exit with an error instead of prompting.
+
+Additionally, set `ALWAYS_YES=1` to automatically confirm all yes/no prompts.
 
 ## Logging
 
@@ -619,7 +626,9 @@ Couple of other useful packages (docs tbd later):
 
 * `fx.prodigy9.co/blobstore` - Store stuff on S3-compatible storage.
 * `fx.prodigy9.co/cache` - Dumb memory/redis cache.
-* `fx.prodigy9.co/cmd/prompts` - Quick interactive TUI prompts. (enter input, yesno etc.)
+* `fx.prodigy9.co/cmd/prompts` - Interactive TUI prompts for CLI commands (text input,
+  list selection, yes/no confirmation). Inputs can be provided as positional args for
+  scripting. Set `CI=1` for non-interactive mode, `ALWAYS_YES=1` to auto-confirm.
 * `fx.prodigy9.co/ctrlc` - CTRL-C signal handler. (Might be better to just wrap tini)
 * `fx.prodigy9.co/passwords` - BCrypt-hash passwords.
 * `fx.prodigy9.co/secret` - Pass secret message around the internet safely.
