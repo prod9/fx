@@ -38,15 +38,8 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 		return err
 	}
 
-	scope, err := data.NewScope(ctx, db)
-	if err != nil {
-		return err
-	} else {
-		defer scope.End(&err)
-	}
-
 	migrator := migrator.New(db, migrator.FromAuto(cfg))
-	plans, dirty, err := migrator.Plan(scope.Context(), intent)
+	plans, dirty, err := migrator.Plan(ctx, intent)
 	if err != nil {
 		return err
 	}
@@ -74,7 +67,7 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 
 	for _, plan := range plans {
 		fmt.Println(plan)
-		if err = migrator.Apply(scope.Context(), plan); err != nil {
+		if err = migrator.Apply(ctx, plan); err != nil {
 			return err
 		}
 	}

@@ -13,6 +13,7 @@ import (
 
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
+	"github.com/jmoiron/sqlx"
 )
 
 var (
@@ -48,16 +49,26 @@ func FromSQL(name, upSQL, downSQL string) Source {
 	}
 }
 
-func FromDB(ctx context.Context) Source {
+func FromDB(ctx context.Context, db *sqlx.DB) Source {
 	return func() ([]Migration, error) {
-		var result []Migration
-		err := data.Run(ctx, func(scope data.Scope) error {
-			if err := scope.Exec(CreateMigrationsTableSQL); err != nil {
-				return err
-			}
-			return scope.Select(&result, ListMigrationsSQL)
-		})
-		return result, err
+		var (
+			result []Migration
+			err    error
+		)
+
+		scope, err := data.NewScope(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+		defer scope.End(&err)
+
+		if err = scope.Exec(CreateMigrationsTableSQL); err != nil {
+			return nil, err
+		}
+		if err = scope.Select(&result, ListMigrationsSQL); err != nil {
+			return nil, err
+		}
+		return result, nil
 	}
 }
 

@@ -65,8 +65,10 @@ func (m *Migrator) Plan(ctx context.Context, intent Intent) (actions []Plan, dir
 
 	if inFiles, err = Load(m.src); err != nil {
 		return
-	} else if inDB, err = Load(FromDB(scope.Context())); err != nil {
-		return
+	} else if inDB, err = Load(FromDB(scope.Context(), m.db)); err != nil {
+		if !IsNoMigrations(err) { // empty DB is valid for fresh databases
+			return
+		}
 	}
 
 	switch intent {
