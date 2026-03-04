@@ -11,6 +11,12 @@ import (
 
 // language=PostgreSQL
 const (
+	CheckMigrationsTableSQL = `
+		SELECT EXISTS (
+			SELECT 1 FROM pg_tables
+			WHERE schemaname = 'public' AND tablename = 'migrations'
+		)`
+
 	CreateMigrationsTableSQL = `
 		CREATE TABLE IF NOT EXISTS migrations
 		(
@@ -206,6 +212,10 @@ func (m *Migrator) Apply(ctx context.Context, plan Plan) (err error) {
 		return
 	} else {
 		defer scope.End(&err)
+	}
+
+	if err = scope.Exec(CreateMigrationsTableSQL); err != nil {
+		return
 	}
 
 	mig = plan.Migration

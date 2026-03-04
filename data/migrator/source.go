@@ -53,6 +53,7 @@ func FromDB(ctx context.Context, db *sqlx.DB) Source {
 	return func() ([]Migration, error) {
 		var (
 			result []Migration
+			exists bool
 			err    error
 		)
 
@@ -62,10 +63,11 @@ func FromDB(ctx context.Context, db *sqlx.DB) Source {
 		}
 		defer scope.End(&err)
 
-		if err = scope.Exec(CreateMigrationsTableSQL); err != nil {
+		if err = scope.Get(&exists, CheckMigrationsTableSQL); err != nil {
 			return nil, err
-		}
-		if err = scope.Select(&result, ListMigrationsSQL); err != nil {
+		} else if !exists {
+			return nil, nil
+		} else if err = scope.Select(&result, ListMigrationsSQL); err != nil {
 			return nil, err
 		}
 		return result, nil
