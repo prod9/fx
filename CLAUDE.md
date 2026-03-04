@@ -85,7 +85,8 @@ Test files exist in: `validate/`, `secret/`, `data/migrator/`, `data/dbname/`, `
 
 ## Releasing
 
-Uses `platform` CLI with semver strategy (configured in `platform.toml`):
+Uses `platform` CLI with semver strategy (configured in `platform.toml`).
+Update `CHANGELOG.md` before releasing.
 
 ```sh
 platform release --patch    # Increment patch version
