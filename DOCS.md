@@ -241,6 +241,107 @@ The `render` package has the following methods:
 * `render.FileTransfer` - Transfers a file (force a download)
 * `render.Error` - Renders error JSON
 
+## Built-in Components
+
+### Built-in Controllers
+
+The `httpserver/controllers` package includes several ready-to-use controllers:
+
+* `Home{}` — Mounts `GET /` returning `{"time": "..."}` with the current server time.
+  Useful for deployment testing and basic health checks.
+* `Debug{}` — Mounts `GET /__panic` which triggers a test panic. Useful for verifying
+  panic recovery middleware and error reporting (e.g. Sentry).
+* `StaticJSON(path, obj)` — Creates a controller that serves a static JSON object at the
+  given path via `GET`.
+* `FromFunc(path, handlerFunc)` — Wraps an `http.HandlerFunc` as a controller mounted at
+  the given path.
+* `FromHandler(path, handler)` — Wraps an `http.Handler` as a controller mounted at the
+  given path.
+
+### Built-in App Fragments
+
+#### `settings.App`
+
+Key-value settings stored in PostgreSQL with a REST API and config provider. Include it
+by mounting the fragment:
+
+```go
+app.Build().
+  Mount(settings.App).
+  Start()
+```
+
+Provides CRUD functions: `settings.List()`, `settings.Get()`, `settings.Set()`,
+`settings.Delete()`.
+
+#### `files.App` / `files.NewApp(client)`
+
+S3-backed file management with presigned URL uploads, metadata stored in PostgreSQL, and
+single/multi-file controllers. Uses the `blobstore` package for S3 operations.
+
+```go
+import "fx.prodigy9.co/app/files"
+
+// Mount the fragment for migrations (uses global blobstore)
+app.Build().
+  Mount(files.App).
+  Start()
+
+// Or with a specific blobstore client
+client := blobstore.NewClient(cfg)
+app.Build().
+  Mount(files.NewApp(client)).
+  Start()
+```
+
+**Defining file kinds** — each kind describes a type of file attachment:
+
+```go
+var userAvatar = files.Kind{
+  Name: "user-avatar", Multiple: false,
+  OwnerType: "user", ContentTypes: files.ImageTypes,
+}
+
+var projectDocs = files.Kind{
+  Name: "project-doc", Multiple: true,
+  OwnerType: "project", ContentTypes: []string{"application/pdf", "image/png"},
+}
+```
+
+**Mounting file controllers** inline within your own controllers:
+
+```go
+func (c *UserCtr) Mount(cfg *config.Source, r chi.Router) error {
+  r.Route("/users/{id}/avatar", func(r chi.Router) {
+    files.Controller(userAvatar,
+      files.WithMode(files.ModeReadOnly),
+      files.WithLinkAge(5*time.Minute),
+    ).Mount(cfg, r)
+  })
+  return nil
+}
+```
+
+`Kind.Multiple` controls which controller type is used:
+* `false` → single-file controller (`GET /`, `GET /meta`, `POST /`, `DELETE /`)
+* `true` → multi-file controller (`GET /`, `GET /{fileID}`, `GET /{fileID}/meta`,
+  `POST /`, `DELETE /{fileID}`)
+
+**Controller options:**
+
+* `WithKind(kind)` — Override the file kind.
+* `WithMode(mode)` — `ModeReadOnly` or `ModeReadWrite` (default).
+* `WithOwnerIDFunc(func(*http.Request) int64)` — Custom owner ID extraction (default:
+  reads `{id}` URL param).
+* `WithClient(*blobstore.Client)` — Use a specific blobstore client instead of the
+  global default.
+* `WithLinkAge(duration)` — Per-controller presigned URL expiry override.
+
+**Configuration:**
+
+* `FILE_LINK_AGE` — App-wide default presigned URL expiry (default: `1m`). Override
+  per-controller with `WithLinkAge`.
+
 ## Middlewares
 
 Middlewares in `fx` attempts 2 things: Conform to go's standard `http.Handler` signature

@@ -21,6 +21,7 @@ configuration issues.
 | Package                  | Purpose                                                                    |
 |--------------------------|----------------------------------------------------------------------------|
 | `app`                    | Application builder, fragment composition, lifecycle                       |
+| `app/files`              | S3-backed file management (presigned URLs, PostgreSQL metadata)            |
 | `config`                 | Type-safe env var config (`Var[T]`, `config.Get`, `.env`/`.env.local`)     |
 | `httpserver`             | HTTP server startup                                                        |
 | `httpserver/controllers` | Controller interface (`Mount(cfg, router) error`) using go-chi             |
@@ -86,7 +87,7 @@ Test files exist in: `validate/`, `secret/`, `data/migrator/`, `data/dbname/`, `
 ## Releasing
 
 Uses `platform` CLI with semver strategy (configured in `platform.toml`).
-Update `CHANGELOG.md` before releasing.
+Only update `CHANGELOG.md` when releasing, not per-commit.
 
 ```sh
 platform release --patch    # Increment patch version
