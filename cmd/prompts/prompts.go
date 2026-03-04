@@ -119,6 +119,14 @@ func (s *Session) Str(item string) string {
 	}
 }
 
+func (s *Session) OptionalList(question, defaultValue string, options []string) string {
+	if len(s.args) > 0 {
+		return s.List(question, defaultValue, options)
+	} else {
+		return defaultValue
+	}
+}
+
 func (s *Session) List(question, def string, options []string) string {
 	if len(s.args) > 0 {
 		head, tail := s.args[0], s.args[1:]

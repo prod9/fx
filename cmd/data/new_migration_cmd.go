@@ -27,7 +27,7 @@ DROP TABLE dummy;
 `
 
 var newMigrationCmd = &cobra.Command{
-	Use:     "new-migration (name)",
+	Use:     "new-migration (name) [subdir]",
 	Aliases: []string{"new-migrate", "new"},
 	Short:   "Creates a new migration file with timestamps and the given name",
 	Run:     runNewMigrationCmd,
@@ -40,7 +40,9 @@ func runNewMigrationCmd(cmd *cobra.Command, args []string) {
 		dir    = config.Get(cfg, migrator.MigrationPathConfig)
 	)
 
-	// we don't normally add migraitons to top-level, so let user pick a folder first
+	name := prompt.Str("name of migration")
+
+	// subdirectory selection is optional, defaults to top-level
 	subdirs := []string{"."}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -53,8 +55,7 @@ func runNewMigrationCmd(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	dir = filepath.Join(dir, prompt.List("which subdirectory", subdirs[0], subdirs))
-	name := prompt.Str("name of migration")
+	dir = filepath.Join(dir, prompt.OptionalList("which subdirectory", subdirs[0], subdirs))
 
 	// create the migration files
 	uppath, downpath, err := migrator.MigrationPath(dir, name)
