@@ -83,6 +83,18 @@ go test ./...            # Run tests
 Tests use `testify` for assertions and `fxtest.Configure()` for test config sources.
 Test files exist in: `validate/`, `secret/`, `data/migrator/`, `data/dbname/`, `examples/envfiles/`.
 
+## Releasing
+
+Uses `platform` CLI with semver strategy (configured in `platform.toml`):
+
+```sh
+platform release --patch    # Increment patch version
+platform release --minor    # Increment minor version
+platform release --major    # Increment major version
+platform release v1.2.3     # Explicit version name
+platform release --force    # Release even if worktree is dirty
+```
+
 ## Documentation
 
 - `DOCS.md` — Comprehensive framework documentation (config, app fragments, controllers, middlewares, database, transactions, migrations, logging)

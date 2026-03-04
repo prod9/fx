@@ -19,7 +19,7 @@ Start by creating a configuration variable:
 var SessionTimeoutConfig = config.DurationDef("SESSION_TIMEOUT", 3*time.Minute)
 ```
 
-Available definitions include (as of 0.7):
+Available definitions include:
 
 * `config.Str` - Plain string
 * `config.Int` - Integer
@@ -80,11 +80,9 @@ lower ones:
 
 * `config.Set` - Values overridden at runtime.
 * Actual Environment variables
-* `.env.local` - Local overrides (should be ignored by git)
-* `.env` - Development values (committed to git)
-* `../.env.local` - Local overrides, for monorepo setups with shared envs (should be
-  ignored by git)
-* `../.env` - Development values, for monorepo setups with shared envs (committed to git)
+* `.env.local` and `.env` files — searched from the current directory upward, stopping at
+  the nearest `.git` directory. At each level, `.env.local` overrides `.env`, and closer
+  files override those further up. Useful for monorepo setups with shared envs.
 * `config.SetDefault` - Default values overridden at runtime.
 * `config.*Def` - Default values set on definition.
 * Go defaults (e.g. `0` for int, `""` for string, etc.)
@@ -235,7 +233,7 @@ func (c *TodoCtr) Get(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-The `render` package has the following methods as of v0.7:
+The `render` package has the following methods:
 
 * `render.Text` - Renders plain text
 * `render.JSON` - Renders JSON
@@ -374,9 +372,10 @@ infrastructure level with something like `pgbouncer`.
 
 Once setup, there are basic methods to interact with the database:
 
-* `data.Exec` - Executes a query with no return value.
 * `data.Get` - Executes a query and returns a single row.
 * `data.Select` - Executes a query and returns multiple rows.
+* `data.Exec` - Executes a query with no return value.
+* `data.Run` - Runs a function inside a transaction (see Transactions section below).
 * `data.Prepare` - Prepares a statement and returns a `*sqlx.Stmt` object.
 
 Example:
@@ -524,7 +523,7 @@ app := app.Build().
 The following commands become available:
 
 * `go run . data migrate` - Runs all migrations.
-* `go run . data new-migration` - Creates new up+down migration files.
+* `go run . data new-migration (name) [subdir]` - Creates new up+down migration files.
 
 Migrations are written as normal SQL files. Usually they contains `CREATE TABLE` for the
 up migration and `DROP TABLE` for the down migration.
@@ -565,10 +564,14 @@ api/files/202504041033_create_files.up.sql
 
 Other commands include:
 
+* `go run . data collect-migrations (outdir)` - Collect migration files into a single directory.
 * `go run . data create-db` - Creates database specified in the config.
 * `go run . data list-migrations` - List all detected migration files.
 * `go run . data migrate` - Runs all detected migration scripts.
+* `go run . data new-migration (name) [subdir]` - Creates new up+down migration files.
 * `go run . data psql` - Starts a psql shell connecting to the configured database.
+* `go run . data recover-migrations [output-dir]` - Export migration cache from database to files.
+* `go run . data resync-migrations` - Update database migration cache to match program files.
 * `go run . data rollback` - Revert one previously ran migration.
 
 ### Scripting and CI
