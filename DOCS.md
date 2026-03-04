@@ -1,8 +1,7 @@
 # FX Documentation
 
-FX is short for framework. However, it tries not to become a full-fleged framework, but
-instead a convenience set of tools that work well together but still allow bits and pieces
-to be swapped in/out as the engineer prefers.
+FX is short for framework. It provides a well-integrated set of tools for building Go APIs
+while staying modular — individual components can be swapped in or out as needed.
 
 ## Configuration
 
@@ -10,8 +9,8 @@ The `config` package allows defining configuration via environment variables in 
 you don't end up with one giant `struct` and each module can maintain its own list of
 configurable things.
 
-Most of the modules in `fx` will either accept a `context.Context` assuming it contains,
-or requiring that you pass a `*config.Source` directly.
+Most modules in `fx` accept either a `context.Context` (which is expected to carry a
+`*config.Source` inside it) or a `*config.Source` directly.
 
 Start by creating a configuration variable:
 
@@ -165,7 +164,6 @@ Available Commands:
   help         Help about any command
   print-config Prints current effective configuration.
   serve        Starts an HTTP server.
-  test-email   Sends a test email to check if SMTP configuration works
 
 Flags:
   -h, --help   help for app
@@ -177,6 +175,8 @@ Notable ones are:
 
 * `go run . print-config` - Prints resolved configuration, useful for debugging.
 * `go run . serve` - Starts HTTP server.
+* `go run . data migrate` - Run all pending database migrations.
+* `go run . data rollback` - Revert the last applied migration.
 
 ## Controllers
 
@@ -378,7 +378,7 @@ func RequirePermission(cfg *config.Source, permission string) func(http.Handler)
 Points to note:
 
 * The first layer is expected to be called multiple times throughout your application to
-  create different intances of the middleware. You will need to be careful with handling
+  create different instances of the middleware. You will need to be careful with handling
   any global state, if needed.
 
 * If you are importing a 3rd-party middleware, you usually only need the 2nd layer.
@@ -459,13 +459,11 @@ config.Set(data.DatabaseURLConfig, "postgres:///mydb")
 db, err := data.Connect(cfg)
 
 // manually adding data middleware
-app := app.Build().
-  Name("my todo app").
-  Middlewares(middlewares.AddDataContext()).
-
-  //...
-
-  Start()
+err := app.Build().
+	Name("my todo app").
+	Middlewares(middlewares.AddDataContext()).
+	// ...
+	Start()
 ```
 
 HA setups, if needed, is assumed to be handled outside the application at the
@@ -486,7 +484,7 @@ func GetTodoByID(ctx context.Context, id string) (*Todo, error) {
   const sql = "SELECT * FROM todos WHERE id = $1"
 
   todo := &Todo{}
-  if err := data.Get(db, todo, sql, id) ; err != nil {
+  if err := data.Get(ctx, todo, sql, id); err != nil {
     return nil, err
   } else {
     return todo, nil
@@ -517,97 +515,95 @@ and similar. They should work, but largely untested, and very alpha.
 
 ## Transactions
 
-Transactions are mostly controlled through the use of `data.Scope`. Take care to create
-and `.End()` a scope properly and transactions should be automatically `COMMIT`-ed or
-`ROLLBACK`-ed.
+Transactions are controlled through `data.Scope`. A scope wraps a `*sqlx.Tx` and
+automatically issues `COMMIT` or `ROLLBACK` based on the returned error.
 
-Originally, these used to be quite manual, posting here for reference:
+### `data.Run` (recommended)
+
+The simplest way to run a transaction. The scope is created and ended automatically:
 
 ```go
-func GetUserByID(ctx context.Context, out any, id int64) (err error) {
+func GetUserByID(ctx context.Context, out any, id int64) error {
+	return data.Run(ctx, func(scope data.Scope) error {
+		err := scope.Get(out, "SELECT * FROM users WHERE id = $1", id)
+		if err != nil {
+			return err
+		}
 
-  // sets up the scope
-  var scope data.Scope
-  scope, err = data.NewScope(ctx, nil)
-  if err != nil {
-    return err
-  }
-  defer scope.End(&err)
+		// pass scope.Context() to propagate the transaction to nested calls
+		var profile *UserProfile
+		if err = GetUserProfile(scope.Context(), profile, id); err != nil {
+			return err
+		}
 
-  // instead of data.Get, use scope.Get
-  err = scope.Get(out, "SELECT * FROM users WHERE id = $1", id)
-  if err != nil {
-    return err
-  }
-
-  // instead of request.Context(), pass scope.Context()
-  var profile *UserProfile
-  if err = GetUserProfile(scope.Context(), profile, id); err != nil {
-    return err
-  } else {
-    user.Profile = profile
-    return nil
-  }
-
+		user.Profile = profile
+		return nil
+	})
 }
 ```
 
-In recent versions, there are 2 new ways, both a little bit more ergonomic to use.
-First, you can use `data.Run` to use closure-scoping.
+### `data.NewScopeErr` (flat style)
+
+If you prefer a flat function body over a closure, `data.NewScopeErr` returns a cancel
+function to `defer`. It takes a pointer to the return error so it can decide whether to
+commit or rollback:
 
 ```go
 func GetUserByID(ctx context.Context, out any, id int64) (err error) {
+	scope, cancel, err := data.NewScopeErr(ctx, &err)
+	defer cancel()
 
-  // scope.End is automatically handled
-  return data.Run(ctx, func(scope *data.Scope) error {
-    err := scope.Get(out, "SELECT * FROM users WHERE id = $1", id)
-    if err != nil {
-      return err
-    }
+	// watch out for the scope of the `err` variable
+	err = scope.Get(out, "SELECT * FROM users WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
 
-    // instead of request.Context(), pass scope.Context()
-    var profile *UserProfile
-    if err = GetUserProfile(scope.Context(), profile, id); err != nil {
-      return err
-    } else {
-      user.Profile = profile
-      return nil
-    }
-  })
+	var profile *UserProfile
+	if err = GetUserProfile(scope.Context(), profile, id); err != nil {
+		return err
+	}
+
+	user.Profile = profile
+	return nil
 }
 ```
 
-Or you can use `data.NewScopeErr` which gives you a `context.CancelFunc` for you to
+### Manual scope management
+
+For full control, create a scope with `data.NewScope` and call `scope.End(&err)` in a
 `defer`:
 
 ```go
 func GetUserByID(ctx context.Context, out any, id int64) (err error) {
-  scope, cancel, err := data.NewScopeErr(ctx, &err)
-  defer cancel()
+	var scope data.Scope
+	scope, err = data.NewScope(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer scope.End(&err)
 
-  // watch out for the scope of the `err` variable.
-  err = scope.Get(out, "SELECT * FROM users WHERE id = $1", id)
-  if err != nil {
-    return err
-  }
+	err = scope.Get(out, "SELECT * FROM users WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
 
-  // instead of request.Context(), pass scope.Context()
-  var profile *UserProfile
-  if err = GetUserProfile(scope.Context(), profile, id); err != nil {
-    return err
-  } else {
-    user.Profile = profile
-    return nil
-  }
+	var profile *UserProfile
+	if err = GetUserProfile(scope.Context(), profile, id); err != nil {
+		return err
+	}
+
+	user.Profile = profile
+	return nil
 }
 ```
 
-Couple of points to note:
+### Notes
 
-* Pointer to returning error is passed so that if an error is returned the scope will
-  automatically rollback.
-* Scope actually just wraps management of `*sqlx.Tx` which are actually just `*sql.Tx`
-  underneath it. So you can use it as a normal transaction if you really want to.
+* A pointer to the return error is passed so the scope can automatically rollback on
+  error.
+* `data.Scope` is an interface wrapping `*sqlx.Tx` — it provides `Get`, `Select`, `Exec`,
+  and `Prepare` methods mirroring the top-level `data` functions.
 
 ## Database Migrations
 
@@ -651,7 +647,7 @@ func main() {
 }
 ```
 
-The migrator will automatically looks for embedded sources. Otherwise it will look at the
+The migrator will automatically look for embedded sources. Otherwise it will look at the
 current folder, and its parents for the files. Uses the `data list-migrations` command to
 check:
 
@@ -724,19 +720,111 @@ mysink := NewCustomSink()
 fxlog.SetSink(mysink)
 ```
 
-## Misc
+## Testing
 
-Couple of other useful packages (docs tbd later):
+The `fxtest` package provides helpers for writing tests against `fx` components.
 
-* `fx.prodigy9.co/blobstore` - Store stuff on S3-compatible storage.
-* `fx.prodigy9.co/cache` - Dumb memory/redis cache.
-* `fx.prodigy9.co/cmd/prompts` - Interactive TUI prompts for CLI commands (text input,
+* `fxtest.Configure()` — Returns a `*config.Source` initialized for testing (reads `.env`
+  files, applies defaults).
+* `fxtest.ConnectTestDatabase(t)` — Creates an isolated test database and returns a
+  `context.Context` carrying both the config source and `*sqlx.DB`. The database is
+  automatically dropped when the test completes, unless `FXTEST_CLEANUP=no` is set.
+
+```go
+func TestSomething(t *testing.T) {
+	ctx := fxtest.ConnectTestDatabase(t)
+
+	// ctx carries *config.Source and *sqlx.DB — pass to data functions directly
+	err := data.Exec(ctx, "INSERT INTO todos (title) VALUES ($1)", "test")
+	require.NoError(t, err)
+}
+```
+
+## Error Utilities
+
+The `errutil` package provides helpers for decorating and collecting errors.
+
+* `errutil.Wrap(name, &err)` — Intended for use in a `defer`. Prefixes the error with
+  `name` if `*err` is non-nil.
+* `errutil.WithCode(err, code)` — Attaches a string error code to the error (useful for
+  API error responses).
+* `errutil.WithData(err, data)` — Attaches arbitrary context data to the error.
+* `errutil.NewCoded(code, msg, data)` — Creates a new error with code, message, and data.
+* `errutil.Decorate(err)` — Wraps an error in a `decoratedErr` for JSON serialization.
+* `errutil.Aggregate[T](slice, func)` — Runs a function on each element in parallel,
+  collecting all errors into a single aggregated error.
+* `errutil.AggregateWithTags[T](slice, func)` — Like `Aggregate` but each error is tagged
+  with a label for identification.
+
+## Background Workers
+
+The `worker` package provides a PostgreSQL-backed background job system.
+
+### Setup
+
+Register job types and start the worker:
+
+```go
+worker := worker.New(cfg, &SendEmailJob{}, &CleanupJob{})
+worker.Start() // blocks, polling for jobs
+worker.Stop()  // graceful shutdown
+```
+
+### Job Interface
+
+Jobs implement the `worker.Interface`:
+
+```go
+type Interface interface {
+	Name() string           // unique job name, used as DB key
+	Run(ctx context.Context) error
+}
+```
+
+### Scheduling
+
+```go
+worker.ScheduleNow(ctx, &SendEmailJob{To: "user@example.com"})
+worker.ScheduleIn(ctx, &CleanupJob{}, 30*time.Minute)
+worker.ScheduleAt(ctx, &ReportJob{}, tomorrow)
+
+// schedule only if a pending job with the same name doesn't already exist
+worker.ScheduleNowIfNotExists(ctx, &DailyDigestJob{})
+```
+
+### Configuration
+
+* `WORKER_POLL` — Polling interval (default: `1m`).
+
+## Mailer
+
+The `mailer` package sends transactional emails via Postmark.
+
+```go
+err := mailer.Send(cfg, &mailer.Mail{
+	From:     "noreply@example.com",
+	To:       []string{"user@example.com"},
+	Subject:  "Welcome!",
+	HTMLBody: "<h1>Hello</h1>",
+	TextBody: "Hello",
+})
+```
+
+### Configuration
+
+* `POSTMARK_TOKEN` — Postmark server API token.
+
+## Other Packages
+
+* `fx.prodigy9.co/blobstore` — S3-compatible object storage client. Used by the `files`
+  package for presigned URL uploads and downloads.
+* `fx.prodigy9.co/cache` — In-memory and Redis caching with a unified interface.
+* `fx.prodigy9.co/cmd/prompts` — Interactive TUI prompts for CLI commands (text input,
   list selection, yes/no confirmation). Inputs can be provided as positional args for
   scripting. Set `CI=1` for non-interactive mode, `ALWAYS_YES=1` to auto-confirm.
-* `fx.prodigy9.co/ctrlc` - CTRL-C signal handler. (Might be better to just wrap tini)
-* `fx.prodigy9.co/passwords` - BCrypt-hash passwords.
-* `fx.prodigy9.co/secret` - Pass secret message around the internet safely.
-* `fx.prodigy9.co/validate` - Validations.
-* `fx.prodigy9.co/worker` - PSQL-backed Background worker (alpha, it works, but not fully
-  tested).
+* `fx.prodigy9.co/ctrlc` — Graceful CTRL-C / SIGINT signal handler.
+* `fx.prodigy9.co/passwords` — BCrypt password hashing.
+* `fx.prodigy9.co/secret` — AES-256-GCM encryption for passing secrets safely (`Hide` /
+  `Reveal`).
+* `fx.prodigy9.co/validate` — Input validation helpers.
 
