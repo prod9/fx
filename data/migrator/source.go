@@ -20,7 +20,7 @@ var (
 	MigrationPathConfig = config.StrDef("DATABASE_MIGRATIONS", ".")
 	ErrNoMigrations     = errors.New("migrator: no migrations found")
 
-	embeddedMigrations fs.FS
+	embeddedMigrations []fs.FS
 )
 
 func IsNoMigrations(err error) bool {
@@ -86,8 +86,12 @@ func FromDB(ctx context.Context, db *sqlx.DB) Source {
 //	func init() {
 //		migrator.Embed(migrationsFS)
 //	}
+//
+// Embed may be called multiple times; sources accumulate. This lets app fragments
+// register their own embedded migrations independently — the root app composes the
+// union at Start.
 func Embed(fsys embed.FS) {
-	embeddedMigrations = fsys
+	embeddedMigrations = append(embeddedMigrations, fsys)
 }
 
 // LoadAuto checks a few different hard-coded sources automagically for migrations in the
@@ -126,11 +130,23 @@ func LoadAuto(cfg *config.Source) ([]Migration, error) {
 	}
 
 	// last chance, look for embedded migrations
-	if embeddedMigrations == nil {
+	if len(embeddedMigrations) == 0 {
 		return nil, ErrNoMigrations
-	} else {
-		return Load(FromFS(embeddedMigrations))
 	}
+
+	var all []Migration
+	for _, fsys := range embeddedMigrations {
+		part, err := Load(FromFS(fsys))
+		if err != nil && !IsNoMigrations(err) {
+			return nil, err
+		}
+		all = append(all, part...)
+	}
+	if len(all) == 0 {
+		return nil, ErrNoMigrations
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
+	return all, nil
 }
 
 func Load(src Source) ([]Migration, error) {

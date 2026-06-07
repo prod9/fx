@@ -26,9 +26,7 @@ type Interface interface {
 }
 
 func Start(app Interface) error {
-	if app.EmbeddedMigrations() != nil {
-		migrator.Embed(*app.EmbeddedMigrations())
-	}
+	embedMigrations(app)
 
 	jobs, cmds, fragment := collect(app)
 	if len(jobs) > 0 {
@@ -44,6 +42,15 @@ func Start(app Interface) error {
 	return cmd.
 		BuildRootCommand(app.Description(), cmds...).
 		Execute()
+}
+
+func embedMigrations(app Interface) {
+	if mig := app.EmbeddedMigrations(); mig != nil {
+		migrator.Embed(*mig)
+	}
+	for _, child := range app.Children() {
+		embedMigrations(child)
+	}
 }
 
 func collect(app Interface) (
