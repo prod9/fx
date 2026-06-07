@@ -3,8 +3,40 @@
 Module: `fx.prodigy9.co` | Go 1.24 | Maintainer: Chakrit Wichian
 
 FX is a minimalistic, modular Go API framework. It bundles well-integrated tools for
-building APIs while letting engineers swap pieces in/out. It is designed to be used via
-`git subtree` in other projects.
+building APIs while letting engineers swap pieces in/out. Most projects should just
+`go get fx.prodigy9.co` and import the packages they need. `git subtree` remains a
+supported escape hatch for hacking on FX itself from a downstream app, but is no
+longer the default install path.
+
+## Philosophy
+
+Full version: [`docs/spec/philosophy.md`](docs/spec/philosophy.md). Apply these as
+design-intent tests for any non-trivial change:
+
+1. **Modular by composition, not by config.** New cross-cutting capabilities ship as app
+   fragments, not registries or hook systems.
+2. **Thin wrappers over standard primitives, never replacements.** chi, sqlx, cobra,
+   `net/http` stay reachable. Add ergonomics, not opacity.
+3. **Config as decentralized declarations.** New tunables declare `config.*Def` next to
+   their consumer. No central `Config` struct.
+4. **Context as the carry-bag.** Ambient values (config, DB, request-scoped state) ride
+   `context.Context`. Don't invent parallel passing mechanisms.
+5. **Everything is optional.** New packages must work standalone. Cross-package coupling
+   needs strong justification.
+6. **Operational concerns are first-class.** Any new subsystem answers "how do I debug
+   this in prod?" before it ships — usually a `cmd` subcommand or introspection route.
+7. **Punt distributed-systems problems to infrastructure.** No service mesh, no retry
+   framework, no pluggable transport. Document the infra assumption instead.
+8. **Convention over options, but one layer deep.** One recommended path plus a small
+   number of escape hatches. Reject pluggable-everything designs.
+
+Minimalism here is a discipline against accidental complexity, not a goal in itself.
+
+## Durable artifacts
+
+`docs/{notes,decisions,spec}/` — sorted by permanence (impermanent / point-in-time /
+current). Default to `notes/`. See `docs/README.md` and per-dir READMEs for picker
+details.
 
 ## ACE / Coding School
 
@@ -99,6 +131,28 @@ platform release --force    # Release even if worktree is dirty
 
 ## Documentation
 
-- `DOCS.md` — Comprehensive framework documentation (config, app fragments, controllers, middlewares, database, transactions, migrations, logging)
-- `README.md` — Project overview, git subtree workflow, vanity server
-- `examples/` — Reference implementations (todoapi, envfiles, workers)
+- `docs/spec/` — Per-topic specs (philosophy, configuration, app-fragments,
+  controllers, middlewares, database, migrations, logging, workers, mailer, errors,
+  testing, utilities). Canonical reference.
+- `docs/{decisions,notes}/` — Point-in-time rulings and impermanent notes (see
+  `docs/README.md`).
+- `docs/TODO.md` — Running follow-up list.
+- `DOCS.md` — Now a thin index pointing into `docs/spec/`; kept for anyone who
+  bookmarked the old path.
+- `README.md` — Project overview, install, philosophy summary, vanity server.
+- `examples/` — Reference implementations (todoapi, envfiles, workers).
+
+## Load these skills
+
+Default skills for this project (drives `ace.toml` `skills` filter):
+
+- `ace`, `ace-*` — ACE workflow / session management
+- `general-coding` — base coding workflow
+- `go-coding` — Go conventions
+- `prod9-fx` — this framework's own conventions and API reference
+- `markdown-writing` — for DOCS.md / README.md / CHANGELOG.md edits
+- `shell` — release/run scripts
+- `rtk` — shell-output compaction
+- `skill-creator` — school skill edits propagate from here
+- `issue-creator` — ticket drafting
+- `note-taker` — meeting/discussion capture
