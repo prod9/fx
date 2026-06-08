@@ -116,18 +116,26 @@ go test ./...            # Run tests
 Tests use `testify` for assertions and `fxtest.Configure()` for test config sources.
 Test files exist in: `validate/`, `secret/`, `data/migrator/`, `data/dbname/`, `examples/envfiles/`.
 
+## Git commit convention
+
+Format: `<scope>: <Sentence-case summary>` — no trailing period, imperative mood. No
+parentheses in the scope (no `feat(app):`, no `docs(TODO):`).
+
+Scope is a single label, in rough order of preference:
+
+- Package or area name: `app:`, `cmd:`, `data:`, `migrator:`, `examples:`, `docs:`,
+  `platform:`, `root:`.
+- Plain conventional type when no single package fits: `feat:`, `fix:`, `refactor:`,
+  `chore:`.
+
+Subject is Sentence case ("Add…", "Fix…", "Move…"), short, parenthetical clarifiers
+allowed in the subject itself. No `fx:` prefix (legacy from the subtree era). No
+Claude/co-author trailers — commits land under the maintainer's identity, plain.
+
 ## Releasing
 
-Uses `platform` CLI with semver strategy (configured in `platform.toml`).
-Only update `CHANGELOG.md` when releasing, not per-commit.
-
-```sh
-platform release --patch    # Increment patch version
-platform release --minor    # Increment minor version
-platform release --major    # Increment major version
-platform release v1.2.3     # Explicit version name
-platform release --force    # Release even if worktree is dirty
-```
+See [`docs/spec/releasing.md`](docs/spec/releasing.md). Short version: clean tree, push
+commits, update `CHANGELOG.md`, `./platform release --patch` (tags + pushes the tag).
 
 ## Documentation
 
@@ -140,7 +148,7 @@ platform release --force    # Release even if worktree is dirty
 - `DOCS.md` — Now a thin index pointing into `docs/spec/`; kept for anyone who
   bookmarked the old path.
 - `README.md` — Project overview, install, philosophy summary, vanity server.
-- `examples/` — Reference implementations (todoapi, envfiles, workers).
+- `examples/` — Reference implementations (todoapi, envfiles, workers, migrations).
 
 ## Load these skills
 

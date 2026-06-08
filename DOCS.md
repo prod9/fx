@@ -16,6 +16,7 @@ per-topic specs under [`docs/spec/`](docs/spec/).
 * [Error Utilities](docs/spec/errors.md)
 * [Testing](docs/spec/testing.md)
 * [Utilities](docs/spec/utilities.md)
+* [Releasing](docs/spec/releasing.md)
 
 See also [`docs/README.md`](docs/README.md) for how `docs/{spec,decisions,notes}/` is
 organized.
