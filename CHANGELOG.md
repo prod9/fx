@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.8.5
+
+* **app, migrator:** Fragment migrations now aggregate through `Mount`. `app.Start`
+  walks the child tree and registers each fragment's `EmbeddedMigrations()`, so
+  fragments like `files.App` no longer require the root app to re-embed their
+  migrations. `migrator.Embed` accumulates instead of replacing; `LoadAuto` merges
+  registered sources and sorts by name (timestamp-prefixed filenames → chronological).
+* **examples:** New `examples/migrations/` demonstrates fragment migration
+  aggregation across three child fragments with an FK chain.
+* **docs:** Split `DOCS.md` into per-topic specs under `docs/spec/`. New
+  `docs/spec/releasing.md` covers the release process. `docs/{decisions,notes}/` and
+  `docs/TODO.md` scaffolded for durable, point-in-time, and impermanent notes.
+
 ## v0.8.4
 
 * **app/files:** New S3-backed file management package with presigned URLs and PostgreSQL metadata.

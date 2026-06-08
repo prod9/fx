@@ -7,19 +7,6 @@ rather than inside them.
 
 ## Open
 
-### Push 3 local commits to `gh/main`
-
-Branch is ahead 3 (`feat(app, migrator)`, `docs: split DOCS.md`, `chore: ACE
-config`). Not pushed in-session per the no-unauthorized-push convention. Push
-when ready.
-
-### Verify fragment-migration aggregation against a real database
-
-The Item-1 change (`migrator.Embed` now accumulates; `app.Start` walks children)
-compiles clean but couldn't be tested this session — `data/migrator` tests need
-`DATABASE_URL` which wasn't set. Spin up a local Postgres and run
-`go test ./data/migrator/...` before relying on the new behavior in production.
-
 ### Watch for `prod9-fx` skill update from school
 
 `prod9.school.claude` is baking claims 1, 2, 4, 5, 6, 7 from
