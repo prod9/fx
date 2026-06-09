@@ -72,7 +72,7 @@ configuration issues.
 | `secret`                 | AES-256-GCM encryption (`Hide`/`Reveal`)                                   |
 | `passwords`              | bcrypt password hashing                                                    |
 | `mailer`                 | Postmark email integration                                                 |
-| `clients/`               | Third-party clients (Coda, OpenAI, Typesense)                              |
+| `clients/`               | Third-party clients (OpenAI, Typesense)                                    |
 | `fxtest`                 | Test utilities (`fxtest.Configure()` for test config)                      |
 | `ctrlc`                  | Graceful CTRL-C signal handling                                            |
 | `slices`                 | Slice utilities                                                            |
