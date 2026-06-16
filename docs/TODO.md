@@ -21,16 +21,10 @@ commitment.
    internal `.Fatal()` builder (which exits inline). Breaking change to `Sink` —
    flag in CHANGELOG. Resolves `fxlog/slog_sink.go:35`.
 
-2. **`Home` readiness probe (`/healthz`).** Add `Home.Healthz` mounted at
-   `/healthz`. Behavior: `data.FromContext(ctx)` → if nil, return 200 (no DB
-   means nothing to be unready against); else `db.PingContext(ctx)` under a
-   500ms `context.WithTimeout(r.Context(), ...)`. Returns 200 `{"status":"ok"}`
-   on success (include `"db":"ok"` only when actually checked), 503 via
-   `render.Error` on ping failure. Scope = dep-reachability only; no
-   self-saturation, no Redis. See `notes/2026-06-16-readiness-probe-semantics.md`
-   for the k8s rationale. Drop the TODO comment; update Home's package doc to
-   describe `/` (liveness echo) vs `/healthz` (readiness). Resolves
-   `httpserver/controllers/home.go:16`.
+2. ~~**`Home` readiness probe (`/healthz`).**~~ Shipped 2026-06-16. Added
+   `data.LookupFromContext` (stdlib-style comma-ok sibling of `FromContext`)
+   and `Home.Healthz` at `/healthz` with the 500ms dep-reachability behavior
+   from `notes/2026-06-16-readiness-probe-semantics.md`.
 
 3. **Context-threading rethink** (folds in `app/settings/provider.go:57` and
    `app/settings/settings.go:42`). Both are symptoms of a larger design gap:

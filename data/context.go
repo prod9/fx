@@ -15,3 +15,8 @@ func NewContext(ctx context.Context, db *sqlx.DB) context.Context {
 func FromContext(ctx context.Context) *sqlx.DB {
 	return ctx.Value(dbContextKey{}).(*sqlx.DB)
 }
+
+func LookupFromContext(ctx context.Context) (*sqlx.DB, bool) {
+	db, ok := ctx.Value(dbContextKey{}).(*sqlx.DB)
+	return db, ok
+}
