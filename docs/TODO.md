@@ -7,6 +7,48 @@ rather than inside them.
 
 ## Open
 
+### Triaged 2026-06-16 — four small TODOs walked, three decisions
+
+Walked the inline TODOs marked "small / well-scoped" in a 1-by-1 session.
+Decisions captured; no code yet. Execution order below is a recommendation, not a
+commitment.
+
+1. **`fxlog`: hoist process termination out of `Sink`.** Drop `Fatal` from the
+   `Sink` interface; add optional `Flusher{ Flush() error }` capability.
+   Package-level `fxlog.Fatal(err)` becomes the single owner of
+   "log error → flush if sink supports it → `os.Stderr.Sync()` → `os.Exit(1)`".
+   Update `SLogSink` and `ZerologSink`; the latter stops using zerolog's
+   internal `.Fatal()` builder (which exits inline). Breaking change to `Sink` —
+   flag in CHANGELOG. Resolves `fxlog/slog_sink.go:35`.
+
+2. **`Home` readiness probe (`/healthz`).** Add `Home.Healthz` mounted at
+   `/healthz`. Behavior: `data.FromContext(ctx)` → if nil, return 200 (no DB
+   means nothing to be unready against); else `db.PingContext(ctx)` under a
+   500ms `context.WithTimeout(r.Context(), ...)`. Returns 200 `{"status":"ok"}`
+   on success (include `"db":"ok"` only when actually checked), 503 via
+   `render.Error` on ping failure. Scope = dep-reachability only; no
+   self-saturation, no Redis. See `notes/2026-06-16-readiness-probe-semantics.md`
+   for the k8s rationale. Drop the TODO comment; update Home's package doc to
+   describe `/` (liveness echo) vs `/healthz` (readiness). Resolves
+   `httpserver/controllers/home.go:16`.
+
+3. **Context-threading rethink** (folds in `app/settings/provider.go:57` and
+   `app/settings/settings.go:42`). Both are symptoms of a larger design gap:
+   how should `*config.Source`, `*sqlx.DB`, and `context.Context` thread
+   through non-HTTP code paths — settings fragment, workers, CLI subcommands,
+   init paths? The `Provider.dbContext()` helper rebuilds `context.Background()`
+   per call because there's no clear answer to "what context do I belong to
+   when there's no caller ctx?" And the settings cache shape (`Get(ctx, key)`
+   TODO) can't be decided independently of where the long-lived Provider
+   state lives. Output: a written design proposal in `docs/notes/` or a
+   decision in `docs/decisions/`, not code. When the cache is implemented as
+   part of the redesign, use the existing `cache` package (extend if needed)
+   rather than inventing settings-local cache state.
+
+Migrator merge (existing entry below) was deferred separately — chakrit's call
+that "merging may not be the right thing to do" and the question wants longer
+think-time before any code change.
+
 ### Watch for `prod9-fx` skill update from school
 
 `prod9.school.claude` is baking claims 1, 2, 4, 5, 6, 7 from
