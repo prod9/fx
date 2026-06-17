@@ -13,13 +13,12 @@ Walked the inline TODOs marked "small / well-scoped" in a 1-by-1 session.
 Decisions captured; no code yet. Execution order below is a recommendation, not a
 commitment.
 
-1. **`fxlog`: hoist process termination out of `Sink`.** Drop `Fatal` from the
-   `Sink` interface; add optional `Flusher{ Flush() error }` capability.
-   Package-level `fxlog.Fatal(err)` becomes the single owner of
-   "log error → flush if sink supports it → `os.Stderr.Sync()` → `os.Exit(1)`".
-   Update `SLogSink` and `ZerologSink`; the latter stops using zerolog's
-   internal `.Fatal()` builder (which exits inline). Breaking change to `Sink` —
-   flag in CHANGELOG. Resolves `fxlog/slog_sink.go:35`.
+1. ~~**`fxlog`: hoist process termination out of `Sink`.**~~ Shipped 2026-06-17.
+   Dropped `Fatal` from the `Sink` interface; added optional
+   `Flusher{ Flush() error }`. Package-level `fxlog.Fatal` is now the single owner
+   of "log → flush if supported → `os.Stderr.Sync()` → `os.Exit(1)`". `ZerologSink`
+   no longer uses zerolog's inline `.Fatal()` builder. Resolved
+   `fxlog/slog_sink.go:35`.
 
 2. ~~**`Home` readiness probe (`/healthz`).**~~ Shipped 2026-06-16. Added
    `data.LookupFromContext` (stdlib-style comma-ok sibling of `FromContext`)
@@ -125,7 +124,3 @@ kept verbatim for grep parity.
 - `config/provider.go:6` — *"Change from `string` to `[]byte` to support more
   complex configuration values."* Provider values are currently string-only.
 
-### `fxlog/`
-
-- `fxlog/slog_sink.go:35` — *"Ensure the log message is flushed before the exit"*
-  in the slog Fatal path.

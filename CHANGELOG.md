@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+* **fxlog:** *Breaking.* `Sink` no longer requires `Fatal`. Process termination is
+  now owned by package-level `fxlog.Fatal`: log the error via `Sink.Error`, flush
+  the sink if it implements the new optional `Flusher{ Flush() error }`,
+  `os.Stderr.Sync()`, then `os.Exit(1)`. `ZerologSink` no longer calls zerolog's
+  inline `.Fatal()` builder. Custom `Sink` implementations must remove their
+  `Fatal` method.
+
 ## v0.8.5
 
 * **app, migrator:** Fragment migrations now aggregate through `Mount`. `app.Start`

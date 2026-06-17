@@ -35,8 +35,17 @@ var (
 func Log(msg string, attrs ...slog.Attr) { sink().Log(msg, attrs...) }
 func Error(err error)                    { sink().Error(err) }
 func Errorf(msg string, args ...any)     { Error(fmt.Errorf(msg, args...)) }
-func Fatal(err error)                    { sink().Fatal(err) }
 func Fatalf(msg string, args ...any)     { Fatal(fmt.Errorf(msg, args...)) }
+
+func Fatal(err error) {
+	s := sink()
+	s.Error(err)
+	if f, ok := s.(Flusher); ok {
+		_ = f.Flush()
+	}
+	_ = os.Stderr.Sync()
+	os.Exit(1)
+}
 
 func bail(msg string, args ...any) {
 	fmt.Fprintf(os.Stderr, "fxlog: "+msg, args...)

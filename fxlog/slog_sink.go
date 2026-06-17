@@ -2,7 +2,6 @@ package fxlog
 
 import (
 	"log/slog"
-	"os"
 )
 
 type SLogSink struct {
@@ -27,11 +26,4 @@ func (s *SLogSink) Log(msg string, attrs ...slog.Attr) {
 
 func (s *SLogSink) Error(err error) {
 	s.slog.LogAttrs(nil, slog.LevelError, "error", slog.Any("error", err))
-}
-
-func (s *SLogSink) Fatal(err error) {
-	s.slog.LogAttrs(nil, slog.LevelError, "fatal", slog.Any("error", err))
-
-	// TODO: Ensure the log message is flushed before the exit
-	os.Exit(1)
 }

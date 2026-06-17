@@ -15,7 +15,13 @@ import (
 type Sink interface {
 	Log(msg string, attrs ...slog.Attr)
 	Error(err error)
-	Fatal(err error)
+}
+
+// Flusher is an optional capability for Sinks that buffer output. fxlog.Fatal
+// calls Flush before terminating the process so the final error reaches the
+// underlying writer.
+type Flusher interface {
+	Flush() error
 }
 
 var (

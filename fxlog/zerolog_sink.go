@@ -69,7 +69,3 @@ func (s *ZerologSink) Log(msg string, attrs ...slog.Attr) {
 func (s *ZerologSink) Error(err error) {
 	s.zerolog.Error().Err(err).Msg("error")
 }
-
-func (s *ZerologSink) Fatal(err error) {
-	s.zerolog.Fatal().Err(err).Msg("fatal")
-}
