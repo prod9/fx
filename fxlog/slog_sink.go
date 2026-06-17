@@ -1,6 +1,7 @@
 package fxlog
 
 import (
+	"context"
 	"log/slog"
 )
 
@@ -21,9 +22,9 @@ func NewDefaultSLogSink() *SLogSink {
 }
 
 func (s *SLogSink) Log(msg string, attrs ...slog.Attr) {
-	s.slog.LogAttrs(nil, slog.LevelInfo, msg, attrs...)
+	s.slog.LogAttrs(context.TODO(), slog.LevelInfo, msg, attrs...)
 }
 
 func (s *SLogSink) Error(err error) {
-	s.slog.LogAttrs(nil, slog.LevelError, "error", slog.Any("error", err))
+	s.slog.LogAttrs(context.TODO(), slog.LevelError, "error", slog.Any("error", err))
 }

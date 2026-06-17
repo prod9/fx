@@ -126,8 +126,10 @@ kept verbatim for grep parity.
 
 ### `fxlog/`
 
-- `fxlog/slog_sink.go:24,28` — `SLogSink.Log` / `Error` pass `nil` as context to
+- ~~`fxlog/slog_sink.go:24,28` — `SLogSink.Log` / `Error` pass `nil` as context to
   `slog.LogAttrs`. `staticcheck` SA1012: use `context.TODO()` (or thread caller
   context through `Sink`, which would be a wider redesign). Pre-existing,
-  surfaced during the 2026-06-17 Sink-Fatal removal audit.
+  surfaced during the 2026-06-17 Sink-Fatal removal audit.~~ Shipped 2026-06-17.
+  Took the `context.TODO()` route; threading caller ctx through `Sink` deferred
+  to the broader context-threading rethink above.
 
