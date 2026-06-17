@@ -109,8 +109,8 @@ kept verbatim for grep parity.
 - `httpserver/render/render.go:34` — `render.Error` shouldn't take `status` as an
   argument; the originating error should carry it (otherwise controllers pick the
   code, which breaks SRP).
-- `httpserver/controllers/home.go:16` — Add a built-in `/healthz` that does more
-  than the trivial home handler (e.g. ping the database).
+- ~~`httpserver/controllers/home.go:16` — Add a built-in `/healthz`.~~ Shipped
+  2026-06-16 (`Home.Healthz`, 500ms dep-reachability probe).
 
 ### `app/settings/`
 
@@ -123,4 +123,11 @@ kept verbatim for grep parity.
 
 - `config/provider.go:6` — *"Change from `string` to `[]byte` to support more
   complex configuration values."* Provider values are currently string-only.
+
+### `fxlog/`
+
+- `fxlog/slog_sink.go:24,28` — `SLogSink.Log` / `Error` pass `nil` as context to
+  `slog.LogAttrs`. `staticcheck` SA1012: use `context.TODO()` (or thread caller
+  context through `Sink`, which would be a wider redesign). Pre-existing,
+  surfaced during the 2026-06-17 Sink-Fatal removal audit.
 
