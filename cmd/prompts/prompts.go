@@ -8,7 +8,6 @@ import (
 	"fx.prodigy9.co/fxlog"
 	"fx.prodigy9.co/slices"
 	"github.com/mattn/go-isatty"
-	"github.com/pterm/pterm"
 )
 
 var CIConfig = config.Bool("CI")
@@ -34,13 +33,20 @@ func New(cfg *config.Source, args []string) *Session {
 	return &Session{cfg, args, interactive}
 }
 
-func (s *Session) Len() int {
-	return len(s.args)
-}
+func (s *Session) Len() int { return len(s.args) }
 
 // Args return leftover unconsumed args
-func (s *Session) Args() []string {
-	return s.args
+func (s *Session) Args() []string { return s.args }
+
+// shift consumes and returns the next leftover arg, if any.
+func (s *Session) shift() (string, bool) {
+	if len(s.args) == 0 {
+		return "", false
+	}
+
+	head := s.args[0]
+	s.args = s.args[1:]
+	return head, true
 }
 
 func (s *Session) Confirm(what, yes, no string) bool {
@@ -50,18 +56,7 @@ func (s *Session) Confirm(what, yes, no string) bool {
 	if !s.interactive {
 		bailf("confirmation required: %s", what)
 	}
-
-	result, err := pterm.DefaultInteractiveConfirm.
-		WithDefaultText(what).
-		WithConfirmText(yes).
-		WithRejectText(no).
-		Show()
-	if err != nil {
-		bail(err)
-		return false
-	} else {
-		return result
-	}
+	return readConfirm(what)
 }
 
 func (s *Session) YesNo(question string) bool {
@@ -69,25 +64,13 @@ func (s *Session) YesNo(question string) bool {
 }
 
 func (s *Session) SensitiveStr(item string) string {
-	if len(s.args) > 0 {
-		head, tail := s.args[0], s.args[1:]
-		s.args = tail
+	if head, ok := s.shift(); ok {
 		return head
 	}
 	if !s.interactive {
 		bailf("missing: %s", item)
 	}
-
-	result, err := pterm.DefaultInteractiveTextInput.
-		WithMask("*").
-		WithDefaultText(item).
-		Show()
-	if err != nil {
-		bail(err)
-		return ""
-	} else {
-		return strings.TrimSpace(result)
-	}
+	return strings.TrimSpace(readSecret(item))
 }
 
 func (s *Session) OptionalStr(item string, defaultValue string) string {
@@ -99,24 +82,13 @@ func (s *Session) OptionalStr(item string, defaultValue string) string {
 }
 
 func (s *Session) Str(item string) string {
-	if len(s.args) > 0 {
-		head, tail := s.args[0], s.args[1:]
-		s.args = tail
+	if head, ok := s.shift(); ok {
 		return head
 	}
 	if !s.interactive {
 		bailf("missing: %s", item)
 	}
-
-	result, err := pterm.DefaultInteractiveTextInput.
-		WithDefaultText(item).
-		Show()
-	if err != nil {
-		bail(err)
-		return ""
-	} else {
-		return strings.TrimSpace(result)
-	}
+	return readLine(item)
 }
 
 func (s *Session) OptionalList(question, defaultValue string, options []string) string {
@@ -128,28 +100,37 @@ func (s *Session) OptionalList(question, defaultValue string, options []string) 
 }
 
 func (s *Session) List(question, def string, options []string) string {
-	if len(s.args) > 0 {
-		head, tail := s.args[0], s.args[1:]
-		if slices.In(options, head) {
-			s.args = tail
-			return head
-		}
+	if len(s.args) > 0 && slices.In(options, s.args[0]) {
+		head, _ := s.shift()
+		return head
 	}
 	if !s.interactive {
 		bailf("invalid option: %s", question)
 	}
+	return runSelect(question, def, options)
+}
 
-	result, err := pterm.DefaultInteractiveSelect.
-		WithDefaultText(question).
-		WithOptions(options).
-		WithDefaultOption(def).
-		Show()
-	if err != nil {
-		bail(err)
-		return ""
-	} else {
-		return result
+// MultiSelect prompts for zero or more of options. From args it reads a single
+// comma-separated value (each part must be a valid option); interactively it shows a
+// checkbox menu toggled with space and confirmed with enter.
+func (s *Session) MultiSelect(question string, options []string) []string {
+	if head, ok := s.shift(); ok {
+		var chosen []string
+		for part := range strings.SplitSeq(head, ",") {
+			if part = strings.TrimSpace(part); part == "" {
+				continue
+			} else if !slices.In(options, part) {
+				bailf("invalid option: %s", part)
+			} else {
+				chosen = append(chosen, part)
+			}
+		}
+		return chosen
 	}
+	if !s.interactive {
+		bailf("selection required: %s", question)
+	}
+	return runMultiSelect(question, options)
 }
 
 func GenList[T any](s *Session, question string, def T, options []T, namer func(item T) string) T {
@@ -172,6 +153,10 @@ func bail(err error) {
 	fxlog.Fatalf("prompt: %w", err)
 }
 
-func bailf(format string, args ...interface{}) {
+func bailf(format string, args ...any) {
 	fxlog.Fatalf("prompt: "+format, args...)
+}
+
+func cancel() {
+	fxlog.Fatalf("prompt: canceled")
 }

@@ -1,6 +1,6 @@
 # prompts
 
-- **Status:** draft
+- **Status:** implemented
 - **Date:** 2026-06-21
 - **Origin:** Studied Rust's `inquire` as a capability bar and re-examined our prompt
   package against it. "Like inquire" is a quality bar, not a feature port.
@@ -78,9 +78,14 @@ p.OptionalList("which dir", def, options)
 prompts.GenList(p, "env", def, envs, namer)
 ```
 
-Anything extra (a validator, a multi-select) attaches the simplest non-builder way —
-leaning toward a variadic option arg, e.g. `p.Str("email", prompts.Required)` — not a
-fluent chain. Final style chosen with the scope below.
+The only addition is one new method in the same positional style:
+
+```go
+p.MultiSelect("which tables", options) // []string
+```
+
+No validators (the package has none today and gains none), no options structs, no
+variadic config. There is nothing to attach.
 
 ## Scope — basic UX, not inquire parity
 
@@ -88,21 +93,21 @@ We are **not** matching inquire's breadth. No new primitives chasing it.
 
 - **Reimplement (parity, swap pterm→x/term):** Text, masked Password, Confirm/YesNo,
   single Select (arrow-key), the Optional* variants, GenList.
-- **Candidate additions (basic, pending confirm):** MultiSelect (the one common gap), a
-  `Required` validator (also closes the args-bypass gap), substring filter for long lists.
-- **Rejected — do not add:** DateSelect (calendar), Editor (`$EDITOR`), autocomplete,
-  `CustomType<T>`, theming/RenderConfig, fuzzy matching. Each waits for a real downstream
-  need.
+- **One addition:** `MultiSelect` — the single common missing type; returns `[]string`.
+- **Rejected — do not add:** validators (there are none today), substring/fuzzy filter,
+  DateSelect (calendar), Editor (`$EDITOR`), autocomplete, `CustomType<T>`,
+  theming/RenderConfig. Each waits for a real downstream need.
 
 ## Internals (the simplification target)
 
 - `cmd/prompts/ansi.go` — escape-code constants + helpers (cursor up/hide/show, clear
   line, erase-down, color wrappers honoring `NO_COLOR`). ~40 lines, no deps.
 - `cmd/prompts/tty.go` — `x/term` wrapper: enter/exit raw mode, terminal size, `readKey`.
-- `cmd/prompts/key.go` — byte → key decoder (enter, arrows, backspace, space, tab, esc,
+- `cmd/prompts/key.go` — byte → key decoder (enter, arrows, backspace, space, esc,
   ctrl-c, rune); handles `ESC [ A/B/C/D` sequences.
 - `cmd/prompts/prompts.go` — the fusion (args/CI/ALWAYS_YES) + the public methods.
-- prompt-type files for select/multiselect rendering.
+- `cmd/prompts/input.go` — cooked-mode line + confirm + masked-secret readers.
+- `cmd/prompts/menu.go` — raw-mode arrow-key Select / MultiSelect rendering.
 
 TUI renders to **stderr** so stdout stays clean for piping. Unix terminals are the
 target; Windows is best-effort (modern VT terminals work via `x/term`'s `MakeRaw`).
