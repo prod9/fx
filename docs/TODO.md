@@ -7,6 +7,29 @@ rather than inside them.
 
 ## Open
 
+### Revealed-philosophy analysis — promotion decision pending (2026-06-21)
+
+Distilled how FX was actually built from the pre-AI git history (174 commits through
+`bde86f6`) and checked it against the eight stated principles in `spec/philosophy.md`.
+Full write-up: `notes/2026-06-21-revealed-philosophy-from-git-history.md`. Result: all
+eight are authentic (several written into doc comments predating CLAUDE.md), plus six
+unstated gaps grounded only in the spine. (Authorship caveat: subtree/squash imports
+attribute every pre-AI commit to chakrit; some leaf code is from others — don't infer
+authorship from git metadata.)
+
+Open decision (chakrit's call): whether to promote into `spec/philosophy.md` —
+- **G1** subtraction-via-stronger-primitives — "net deletion is the signal you chose
+  the right primitive"; the worker's Postgres-CAS-over-`FOR UPDATE` decision is the
+  worked example, and it also grounds stated principle #7.
+- **G2** provenance + design-in-prose-build-on-demand (the `config.Provider` seam
+  narrated at birth in `config/source.go`, built 2.5y later in `8ad5c6d`).
+- G3 (ship-rough-then-harden), G4 (caller-safety over author-convenience), G6
+  (anti-dogmatism) are lower-altitude; fold into existing principles if promoted.
+
+chakrit flagged more work next session.
+
+*Logged: 2026-06-21.*
+
 ### Triaged 2026-06-16 — four small TODOs walked, three decisions
 
 Walked the inline TODOs marked "small / well-scoped" in a 1-by-1 session.
