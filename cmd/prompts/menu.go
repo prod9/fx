@@ -37,8 +37,9 @@ func runSelect(label, def string, options []string) string {
 	}
 }
 
-// runMultiSelect shows a checkbox menu (space toggles, enter confirms).
-func runMultiSelect(label string, options []string) []string {
+// runMultiSelect shows a checkbox menu (space toggles, enter confirms), pre-checking
+// any options listed in defaults.
+func runMultiSelect(label string, options, defaults []string) []string {
 	t, err := openTTY()
 	if err != nil {
 		bail(err)
@@ -46,6 +47,9 @@ func runMultiSelect(label string, options []string) []string {
 	defer t.close()
 
 	chosen := make([]bool, len(options))
+	for i, o := range options {
+		chosen[i] = indexOf(defaults, o) >= 0
+	}
 	cursor, prev := 0, 0
 	rows := viewport(t, len(options))
 

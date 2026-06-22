@@ -110,10 +110,11 @@ func (s *Session) List(question, def string, options []string) string {
 	return runSelect(question, def, options)
 }
 
-// MultiSelect prompts for zero or more of options. From args it reads a single
-// comma-separated value (each part must be a valid option); interactively it shows a
-// checkbox menu toggled with space and confirmed with enter.
-func (s *Session) MultiSelect(question string, options []string) []string {
+// MultiSelect prompts for zero or more of options, with defaults pre-checked. From args
+// it reads a single comma-separated value (each part must be a valid option);
+// non-interactively with no args it returns defaults; interactively it shows a checkbox
+// menu (defaults pre-checked) toggled with space and confirmed with enter.
+func (s *Session) MultiSelect(question string, options, defaults []string) []string {
 	if head, ok := s.shift(); ok {
 		var chosen []string
 		for part := range strings.SplitSeq(head, ",") {
@@ -128,9 +129,12 @@ func (s *Session) MultiSelect(question string, options []string) []string {
 		return chosen
 	}
 	if !s.interactive {
+		if len(defaults) > 0 {
+			return defaults
+		}
 		bailf("selection required: %s", question)
 	}
-	return runMultiSelect(question, options)
+	return runMultiSelect(question, options, defaults)
 }
 
 func GenList[T any](s *Session, question string, def T, options []T, namer func(item T) string) T {

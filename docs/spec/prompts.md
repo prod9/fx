@@ -81,7 +81,7 @@ prompts.GenList(p, "env", def, envs, namer)
 The only addition is one new method in the same positional style:
 
 ```go
-p.MultiSelect("which tables", options) // []string
+p.MultiSelect("which tables", options, defaults) // []string; defaults pre-checked
 ```
 
 No validators (the package has none today and gains none), no options structs, no
@@ -93,7 +93,8 @@ We are **not** matching inquire's breadth. No new primitives chasing it.
 
 - **Reimplement (parity, swap pterm→x/term):** Text, masked Password, Confirm/YesNo,
   single Select (arrow-key), the Optional* variants, GenList.
-- **One addition:** `MultiSelect` — the single common missing type; returns `[]string`.
+- **One addition:** `MultiSelect(question, options, defaults)` — the single common
+  missing type; `defaults` pre-checks entries; returns `[]string`.
 - **Rejected — do not add:** validators (there are none today), substring/fuzzy filter,
   DateSelect (calendar), Editor (`$EDITOR`), autocomplete, `CustomType<T>`,
   theming/RenderConfig. Each waits for a real downstream need.
