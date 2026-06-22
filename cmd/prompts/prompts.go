@@ -110,11 +110,21 @@ func (s *Session) List(question, def string, options []string) string {
 	return runSelect(question, def, options)
 }
 
+// OptionalMultiSelect is MultiSelect for an optional trailing arg: with args present it
+// behaves like MultiSelect, otherwise it returns defaults without prompting.
+func (s *Session) OptionalMultiSelect(question string, defaults, options []string) []string {
+	if len(s.args) > 0 {
+		return s.MultiSelect(question, defaults, options)
+	} else {
+		return defaults
+	}
+}
+
 // MultiSelect prompts for zero or more of options, with defaults pre-checked. From args
-// it reads a single comma-separated value (each part must be a valid option);
-// non-interactively with no args it returns defaults; interactively it shows a checkbox
+// it reads a single comma-separated value (each part must be a valid option); it bails
+// when non-interactive with no args (mirroring List). Interactively it shows a checkbox
 // menu (defaults pre-checked) toggled with space and confirmed with enter.
-func (s *Session) MultiSelect(question string, options, defaults []string) []string {
+func (s *Session) MultiSelect(question string, defaults, options []string) []string {
 	if head, ok := s.shift(); ok {
 		var chosen []string
 		for part := range strings.SplitSeq(head, ",") {
@@ -129,9 +139,6 @@ func (s *Session) MultiSelect(question string, options, defaults []string) []str
 		return chosen
 	}
 	if !s.interactive {
-		if len(defaults) > 0 {
-			return defaults
-		}
 		bailf("selection required: %s", question)
 	}
 	return runMultiSelect(question, options, defaults)

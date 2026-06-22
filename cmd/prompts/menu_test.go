@@ -45,10 +45,15 @@ func TestPicked(t *testing.T) {
 
 func TestMultiSelectArgs(t *testing.T) {
 	s := &Session{args: []string{"a,c"}, interactive: false}
-	assert.Equal(t, []string{"a", "c"}, s.MultiSelect("pick", []string{"a", "b", "c"}, nil))
+	assert.Equal(t, []string{"a", "c"}, s.MultiSelect("pick", nil, []string{"a", "b", "c"}))
 }
 
-func TestMultiSelectNonInteractiveReturnsDefaults(t *testing.T) {
+func TestOptionalMultiSelectNoArgsReturnsDefaults(t *testing.T) {
 	s := &Session{interactive: false}
-	assert.Equal(t, []string{"b"}, s.MultiSelect("pick", []string{"a", "b", "c"}, []string{"b"}))
+	assert.Equal(t, []string{"b"}, s.OptionalMultiSelect("pick", []string{"b"}, []string{"a", "b", "c"}))
+}
+
+func TestOptionalMultiSelectWithArgs(t *testing.T) {
+	s := &Session{args: []string{"a,c"}, interactive: false}
+	assert.Equal(t, []string{"a", "c"}, s.OptionalMultiSelect("pick", []string{"b"}, []string{"a", "b", "c"}))
 }

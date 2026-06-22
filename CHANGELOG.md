@@ -5,10 +5,11 @@
 * **prompts:** Reimplemented on `golang.org/x/term` instead of `pterm`, dropping
   `pterm` and its subtree (~10 modules) from the dependency graph with nothing added
   (`x/term` was already transitive). The existing method API is unchanged; adds
-  `Session.MultiSelect(question, options, defaults)` for multi-choice selection —
-  `defaults` pre-checks entries and is the non-interactive fallback (space toggles,
-  enter confirms). Interactive UI now renders to stderr so stdout stays clean for
-  piping. TTY detection still uses `mattn/go-isatty`.
+  `Session.MultiSelect(question, defaults, options)` (arg order mirrors `List`) for
+  multi-choice selection — `defaults` pre-checks entries, and the base method bails when
+  non-interactive, with `OptionalMultiSelect` mirroring `OptionalList` for the
+  skip-prompt case (space toggles, enter confirms). Interactive UI now renders to stderr
+  so stdout stays clean for piping. TTY detection still uses `mattn/go-isatty`.
 * **fxlog:** *Breaking.* `Sink` no longer requires `Fatal`. Process termination is
   now owned by package-level `fxlog.Fatal`: log the error via `Sink.Error`, flush
   the sink if it implements the new optional `Flusher{ Flush() error }`,
