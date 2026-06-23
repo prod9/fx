@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.8.6
 
 * **prompts:** Reimplemented on `golang.org/x/term` instead of `pterm`, dropping
   `pterm` and its subtree (~10 modules) from the dependency graph with nothing added
