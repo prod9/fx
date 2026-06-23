@@ -7,6 +7,34 @@ rather than inside them.
 
 ## Open
 
+### Prompts redesign shipped as v0.8.6 (2026-06-22) — two loose ends
+
+`cmd/prompts` reimplemented hand-rolled on `golang.org/x/term`; dropped `pterm` + ~10
+subtree modules (`go-isatty` kept — `term.IsTerminal` is unreliable per chakrit). Added
+`MultiSelect(question, defaults, options)` + `OptionalMultiSelect` (arg order mirrors
+`List`/`OptionalList`; `defaults` pre-check, base bails non-interactive). Spec:
+`spec/prompts.md` (Status: implemented). Released **v0.8.6** (tag `4fd53f3`); platform
+integrated, pinned `fx.prodigy9.co@v0.8.6`, dropped its `replace => ../fx`.
+
+Loose ends:
+- **Push `64b3e4d`** (`docs: Document ALWAYS_YES=1 for non-interactive release`) —
+  committed on `main`, **unpushed** (ahead 1).
+- **Decide `docs/spec/audit.md`** — untracked draft (prior agent) proposing an
+  `app/audit` fragment (data layer + `audit_events` migration carried like `settings.App`;
+  flags a dual-wiring footgun: `import audit` *and* `Mount(audit.App)` both required, else
+  silent empty trail). Commit as draft spec / leave / drop — chakrit's call. The audit
+  work itself is driven from TIES/sso-control.
+- Low-pri school candidate: propose to `go-coding` that builder/fluent APIs are out
+  (chakrit: "un-go-like") — prefer plain funcs + positional args or a plain options struct.
+
+### ace-connect bridge live — autonomous, release-cutting held
+
+Listener bound: slug `prod9.fx.claude`, autonomous mode (the Monitor survives `/clear` —
+next `/ace` should load `ace-connect` to recover wire format/mode). Envelope: safe
+bugfix-class work + commits on `main` proceed; pushes, releases, deploys wait for chakrit.
+No `.inbox.log` (autonomous acts directly). This session it handled platform's MultiSelect
+pre-check request end-to-end over the bridge.
+
 ### Revealed-philosophy analysis — promotion decision pending (2026-06-21)
 
 Distilled how FX was actually built from the pre-AI git history (174 commits through
@@ -26,7 +54,11 @@ Open decision (chakrit's call): whether to promote into `spec/philosophy.md` —
 - G3 (ship-rough-then-harden), G4 (caller-safety over author-convenience), G6
   (anti-dogmatism) are lower-altitude; fold into existing principles if promoted.
 
-chakrit flagged more work next session.
+**Greenlit 2026-06-22** — chakrit: "your call on all items, I'm fine with it."
+Authorized but not yet executed (this session went to the prompts redesign + v0.8.6
+release instead). **Top pending task next session: execute the promotion** — promote
+G1 + G2 (as new principles or a clearly-marked section), fold G3/G4/G6 into existing
+principles, per the note's own recommendation.
 
 *Logged: 2026-06-21.*
 
