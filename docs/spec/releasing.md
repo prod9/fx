@@ -76,6 +76,14 @@ conventional-commit type. `**migrator:**`, not `**fix:**`.
 ./platform release --force    # dirty tree (avoid)
 ```
 
+`platform release` prompts `create this release? [y/N]` before tagging. To confirm
+non-interactively (automation, or driving it from an agent), set `ALWAYS_YES=1` — a
+piped `y` (`echo y | …`) does **not** work, since the prompt reads the tty directly:
+
+```sh
+ALWAYS_YES=1 ./platform release --patch
+```
+
 What `platform release` does:
 
 1. Computes the next version from the strategy (`semver` + flag).
