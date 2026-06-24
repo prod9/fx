@@ -16,16 +16,25 @@ subtree modules (`go-isatty` kept — `term.IsTerminal` is unreliable per chakri
 `spec/prompts.md` (Status: implemented). Released **v0.8.6** (tag `4fd53f3`); platform
 integrated, pinned `fx.prodigy9.co@v0.8.6`, dropped its `replace => ../fx`.
 
-Loose ends:
-- **Push `64b3e4d`** (`docs: Document ALWAYS_YES=1 for non-interactive release`) —
-  committed on `main`, **unpushed** (ahead 1).
-- **Decide `docs/spec/audit.md`** — untracked draft (prior agent) proposing an
-  `app/audit` fragment (data layer + `audit_events` migration carried like `settings.App`;
-  flags a dual-wiring footgun: `import audit` *and* `Mount(audit.App)` both required, else
-  silent empty trail). Commit as draft spec / leave / drop — chakrit's call. The audit
-  work itself is driven from TIES/sso-control.
+Resolved 2026-06-24: pushed `64b3e4d` + the doc commits to `gh/main`; `spec/audit.md`
+committed as a tracked draft spec. The builder/validation alternative for audit
+actors/actions was explored and rejected (kept `var App` + caller constants; rationale in
+`spec/audit.md`).
+
+Still open:
 - Low-pri school candidate: propose to `go-coding` that builder/fluent APIs are out
   (chakrit: "un-go-like") — prefer plain funcs + positional args or a plain options struct.
+
+### Audit app (`app/audit`) — in planning (2026-06-24)
+
+Adopting `spec/audit.md`: extract the audit trail into fx as an `app/audit` fragment
+(data layer `Record`/`Log`/`List`/`Actor`/`Event` + `audit_events` migration, mounted
+like `settings.App`; no controller — read endpoint stays caller-side). Actions/actors are
+caller-owned constants. Key risk: the dual-wiring footgun (`import` + `Mount` both
+required) — mitigate with a loud-on-missing-table check. Plan presented for confirmation;
+build pending approval. Caveat: `event.go` is re-derived from the spec's API sketch, not
+ported verbatim from TIES (that source not in-repo) — diff against TIES before shipping if
+that copy is canonical.
 
 ### ace-connect bridge live — autonomous, release-cutting held
 
