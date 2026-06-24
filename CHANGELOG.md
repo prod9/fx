@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.7
+
+* **audit:** New `app/audit` fragment — an append-only audit trail (`Record`/`Log`/`List`
+  over an `audit_events` table) mounted like `settings.App`. Ported from TIES; actions and
+  actors are caller-owned constants, and the read endpoint stays caller-side.
+
 ## v0.8.6
 
 * **prompts:** Reimplemented on `golang.org/x/term` instead of `pterm`, dropping
