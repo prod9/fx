@@ -25,16 +25,17 @@ Still open:
 - Low-pri school candidate: propose to `go-coding` that builder/fluent APIs are out
   (chakrit: "un-go-like") — prefer plain funcs + positional args or a plain options struct.
 
-### Audit app (`app/audit`) — in planning (2026-06-24)
+### Audit app (`app/audit`) — implemented 2026-06-24, pending release
 
-Adopting `spec/audit.md`: extract the audit trail into fx as an `app/audit` fragment
-(data layer `Record`/`Log`/`List`/`Actor`/`Event` + `audit_events` migration, mounted
-like `settings.App`; no controller — read endpoint stays caller-side). Actions/actors are
-caller-owned constants. Key risk: the dual-wiring footgun (`import` + `Mount` both
-required) — mitigate with a loud-on-missing-table check. Plan presented for confirmation;
-build pending approval. Caveat: `event.go` is re-derived from the spec's API sketch, not
-ported verbatim from TIES (that source not in-repo) — diff against TIES before shipping if
-that copy is canonical.
+Shipped the `app/audit` fragment (`audit.go` + `event.go` + migration `202606241830`),
+**ported verbatim** from `prod9/tie` `api/audit` minus TIES-specific action constants.
+Data layer `Record`/`Log`/`List`/`Actor`/`Event`; `var App =
+app.Build().EmbedMigrations(...)`, no controller (read endpoint caller-side). Actions and
+actors are caller-owned constants. The dual-wiring footgun needs no probe — `Log` already
+swallows-and-logs, so a missing `audit_events` table warns on every call. Built/vetted
+clean; DB-backed funcs need `DATABASE_URL` to exercise (no test, matching `settings`/
+`files` peers). Committed `ee54122`, **unpushed**. CHANGELOG entry deferred to next
+release (release-time per `releasing.md`).
 
 ### ace-connect bridge live — autonomous, release-cutting held
 

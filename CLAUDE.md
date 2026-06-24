@@ -53,6 +53,7 @@ configuration issues.
 | Package                  | Purpose                                                                    |
 |--------------------------|----------------------------------------------------------------------------|
 | `app`                    | Application builder, fragment composition, lifecycle                       |
+| `app/audit`              | Append-only audit trail (`Record`/`Log`/`List`, `audit_events` migration) |
 | `app/files`              | S3-backed file management (presigned URLs, PostgreSQL metadata)            |
 | `config`                 | Type-safe env var config (`Var[T]`, `config.Get`, `.env`/`.env.local`)     |
 | `httpserver`             | HTTP server startup                                                        |

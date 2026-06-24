@@ -1,9 +1,12 @@
-# Proposal: `fx.prodigy9.co/audit` package
+# audit
 
-- **Status:** draft
-- **Date:** 2026-06-18
+- **Status:** implemented
+- **Date:** 2026-06-18 (proposal); implemented 2026-06-24
 - **Origin:** TIES task 4 ported sso-control's audit trail near-verbatim. Two
   services now carry the same code. See `tie/docs/notes/audit-findings.md`.
+- **Implementation:** `app/audit/` — ported verbatim from `prod9/tie` `api/audit`
+  (`event.go` + migration), minus TIES-specific action constants; migration re-stamped
+  `202606241830`. Builds/vets clean; the DB-backed funcs need `DATABASE_URL` to exercise.
 
 ## Summary
 
