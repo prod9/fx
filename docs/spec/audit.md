@@ -73,6 +73,17 @@ from a clean tree. This is a pre-existing fx gotcha, not new to audit, but it
 bites audit harder because the SQL lives in a dependency, not the service repo.
 Call it out in the adoption guide.
 
+### Adopting in a service that already has an audit table
+
+A service replacing its own local audit migration with this fragment already has the
+`audit_events` table from its prior migration, recorded under a different ledger
+timestamp. fx owns this migration's timestamp and does **not** match any consumer's
+history — there is no single timestamp that could. Reconcile the ledger **downstream**: if the
+DB is disposable, a reset is simplest — a fresh DB applies the migration cleanly with no
+divergence; otherwise resync/recover so fx's migration is recorded as already-applied (the
+table exists) and retire the old local entry. fx is never pinned to a legacy timestamp to
+accommodate a downstream's applied state.
+
 ### Q2 — Actor extraction: caller-constructed vs context hook?
 
 **Keep `Actor` caller-constructed (option a).** fx has no session or user
