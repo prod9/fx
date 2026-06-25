@@ -1,11 +1,10 @@
 # Changelog
 
-## v0.8.8
+## Unreleased
 
 * **audit:** Document downstream ledger reconciliation for a service adopting the fragment
   in place of its own local audit migration — reset a disposable DB, or resync/recover the
-  ledger so fx's migration records as already-applied. Docs only; no code change since
-  v0.8.7.
+  ledger so fx's migration records as already-applied.
 
 ## v0.8.7
 

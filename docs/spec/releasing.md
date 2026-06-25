@@ -39,6 +39,10 @@ When in doubt: patch. Pre-1.0 callers should expect breakage at minor boundaries
 anyway, so the cost of under-bumping is low and the cost of burning a minor on a
 trivial change is real (fewer minors available before 1.0).
 
+**Docs-only changes don't warrant a release.** A tag should carry a code change; fold
+spec/doc/changelog updates into the next code-bearing release rather than tagging them
+alone. If a change touches nothing under a consumer's `go get`, it does not need a version.
+
 ## CHANGELOG conventions
 
 Update `CHANGELOG.md` only at release time, not per-commit. Format mirrors prior
