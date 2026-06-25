@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8.8
+
+* **audit:** Document downstream ledger reconciliation for a service adopting the fragment
+  in place of its own local audit migration — reset a disposable DB, or resync/recover the
+  ledger so fx's migration records as already-applied. Docs only; no code change since
+  v0.8.7.
+
 ## v0.8.7
 
 * **audit:** New `app/audit` fragment — an append-only audit trail (`Record`/`Log`/`List`
