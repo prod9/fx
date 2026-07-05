@@ -25,17 +25,27 @@ Still open:
 - Low-pri school candidate: propose to `go-coding` that builder/fluent APIs are out
   (chakrit: "un-go-like") — prefer plain funcs + positional args or a plain options struct.
 
-### Audit app (`app/audit`) — implemented 2026-06-24, pending release
+### Audit app (`app/audit`) — shipped v0.8.7, one verification open
 
-Shipped the `app/audit` fragment (`audit.go` + `event.go` + migration `202606241830`),
-**ported verbatim** from `prod9/tie` `api/audit` minus TIES-specific action constants.
-Data layer `Record`/`Log`/`List`/`Actor`/`Event`; `var App =
-app.Build().EmbedMigrations(...)`, no controller (read endpoint caller-side). Actions and
-actors are caller-owned constants. The dual-wiring footgun needs no probe — `Log` already
-swallows-and-logs, so a missing `audit_events` table warns on every call. Built/vetted
-clean; DB-backed funcs need `DATABASE_URL` to exercise (no test, matching `settings`/
-`files` peers). Committed `ee54122`, **unpushed**. CHANGELOG entry deferred to next
-release (release-time per `releasing.md`).
+`app/audit` fragment (`audit.go` + `event.go` + migration `202606241830`) **ported
+verbatim** from `prod9/tie` `api/audit` minus TIES action constants. `Record`/`Log`/`List`/
+`Actor`/`Event`; `var App = app.Build().EmbedMigrations(...)`, no controller. Actions/actors
+are caller-owned constants. No dual-wiring probe — `Log` swallows-and-logs, so a missing
+table warns on every call. **Released v0.8.7** (tag `f69d3fb`); tie adopted it back as a
+library import, build/vet/test green (its DBs are resettable, so no ledger surgery).
+
+- **Open (chakrit's):** runtime `data migrate` + `Record`→`List` against Postgres, after a
+  tie reset — the only DB-backed exercise nobody could run (no `DATABASE_URL` in sandbox/CI).
+- Migration identity: fx owns its timestamp; consumers reconcile downstream (reset or
+  resync). Adoption note in `spec/audit.md`; currently `## Unreleased` in CHANGELOG.
+- **v0.8.8 was cut docs-only then YANKED** (tag deleted, proxy 404, tie never pinned it).
+  Guardrail added to `releasing.md`: docs-only changes don't warrant a release. The
+  Unreleased adoption note rides the next code-bearing release.
+
+### Philosophy promotion — greenlit, still unexecuted
+
+G1/G2 → `spec/philosophy.md`, fold G3/G4/G6 (see the older TODO entry below). chakrit
+greenlit "your call on all items"; not yet done — top backlog item.
 
 ### ace-connect bridge live — autonomous, release-cutting held
 
