@@ -13,6 +13,7 @@ per-topic specs under [`docs/spec/`](docs/spec/).
 * [Logging](docs/spec/logging.md)
 * [Background Workers](docs/spec/workers.md)
 * [Mailer](docs/spec/mailer.md)
+* [Blob Storage](docs/spec/blobstore.md)
 * [Error Utilities](docs/spec/errors.md)
 * [Testing](docs/spec/testing.md)
 * [Utilities](docs/spec/utilities.md)

@@ -64,12 +64,14 @@ configuration issues.
 | `data/migrator`          | SQL migration engine (file-based + `go:embed` support)                     |
 | `data/page`              | Pagination helpers                                                         |
 | `cmd`                    | CLI commands via cobra (`serve`, `print-config`, data subcommands)         |
+| `cmd/store`              | `store` command group: `serve`, `upload`/`download`, `presign-*`, `delete` |
 | `fxlog`                  | Structured logging (zerolog default, slog option)                          |
 | `worker`                 | PostgreSQL-backed background job system                                    |
 | `validate`               | Input validation helpers                                                   |
 | `errutil`                | Error decoration (`WithCode`, `WithData`, `Wrap`)                          |
 | `cache`                  | In-memory / Redis caching abstraction                                      |
-| `blobstore`              | S3-compatible object storage                                               |
+| `blobstore`              | S3-compatible object storage (presigned URLs; scheme-selected transport)   |
+| `blobserver`             | Local disk blob server for dev (`store serve`); S3 GET/PUT/DELETE on disk  |
 | `secret`                 | AES-256-GCM encryption (`Hide`/`Reveal`)                                   |
 | `passwords`              | bcrypt password hashing                                                    |
 | `mailer`                 | Postmark email integration                                                 |
