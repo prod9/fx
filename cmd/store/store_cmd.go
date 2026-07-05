@@ -10,5 +10,10 @@ var Cmd = &cobra.Command{
 func init() {
 	Cmd.AddCommand(
 		serveCmd,
+		presignGetCmd,
+		presignPutCmd,
+		uploadCmd,
+		downloadCmd,
+		deleteCmd,
 	)
 }

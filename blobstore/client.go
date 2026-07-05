@@ -109,6 +109,19 @@ func (s *Client) ForceDeleteObject(ctx context.Context, key string) error {
 	}
 }
 
+// secureFromScheme maps a STORAGE_URL scheme to minio's TLS toggle. Whitelisted:
+// s3 and https talk TLS (live endpoints); http targets a plaintext local blobserver.
+func secureFromScheme(scheme string) (bool, error) {
+	switch scheme {
+	case "s3", "https":
+		return true, nil
+	case "http":
+		return false, nil
+	default:
+		return false, fmt.Errorf("unsupported STORAGE_URL scheme %q", scheme)
+	}
+}
+
 func (s *Client) tryGetMinio() (*minio.Client, error) {
 	if client := s.getMinio(); client != nil {
 		return client, nil
@@ -142,10 +155,23 @@ func (s *Client) initMinio() error {
 		return errors.New("blobstore: access key or secret key not configured")
 	}
 
-	client, err := minio.New(endpoint, &minio.Options{
+	secure, err := secureFromScheme(s3url.Scheme)
+	if err != nil {
+		return fmt.Errorf("blobstore: %w", err)
+	}
+
+	opts := &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: true,
-	})
+		Secure: secure,
+	}
+	if !secure {
+		// A plaintext endpoint is the local blobserver, which ignores auth and
+		// region. Pin a region so minio-go skips the GetBucketLocation lookup the
+		// server does not implement.
+		opts.Region = "us-east-1"
+	}
+
+	client, err := minio.New(endpoint, opts)
 	if err != nil {
 		return fmt.Errorf("blobstore: %w", err)
 	}
