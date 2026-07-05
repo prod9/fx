@@ -5,6 +5,7 @@ import (
 
 	"fx.prodigy9.co/cmd"
 	"fx.prodigy9.co/cmd/data"
+	"fx.prodigy9.co/cmd/store"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
 	"fx.prodigy9.co/worker"
@@ -30,6 +31,7 @@ func (b *Builder) AddDefaultCommands() *Builder {
 		cmd.PrintConfigCmd,
 		cmd.TestEmailCmd,
 		data.Cmd,
+		store.Cmd,
 	)
 }
 
