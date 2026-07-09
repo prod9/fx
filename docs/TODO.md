@@ -25,11 +25,18 @@ from any context on a fresh DB. Three larger threads are parked for a dedicated 
 
 ### `app/files` audit — fix-all slate, breaking (targets v0.9.0) — 2026-07-05
 
-**Built, re-audited twice, then cleanup-reworked 2026-07-09** (`/ace-audit` over everything
-since v0.8.7). **Nothing pushed.** Unpushed arc on `main` is `5f5d943..3b55142` (see `git log
-v0.8.7..HEAD`). Tree clean (only `.gitignore`, w/ the ace-connect `.inbox.log`);
-build/vet/tests green. The audit surface is settled — next `/ace` should NOT re-audit; the
-two open items below are chakrit's decisions, not more review.
+**Built, audited, then cleanup fully reworked 2026-07-10.** **Nothing pushed.** Unpushed arc
+on `main` is `5f5d943..c0364bf` (see `git log v0.8.7..HEAD`). Tree clean; gofmt/build/vet and
+the full test suite green (DB-gated tests run off the committed `.env` DATABASE_URL). The
+audit surface is settled — next `/ace` should NOT re-audit.
+
+**2026-07-10 session (`/ace-audit` before v0.9.0):** cut the invented `coda` client task (no
+such client existed). Cut `blobstore.ForceDeleteObject` + `options.setDefaults` (dead). Then
+the cleanup subsystem was reworked end to end — see the **Superseded 2026-07-10** note below:
+`ListObjects` cut, `ObjectExists` + blobserver HEAD added, `runCleanup` now DB-driven and
+fail-fast, `ScheduleCleanup` replaced by exported `CleanupJob` (sendfile seeds it in `main`),
+`errutil.Aggregator` documented, `TestRunCleanup` added. **Next step: push + tag v0.9.0**
+(`./platform release --minor`). Batch handling in the sweep is the one deferred follow-up.
 
 Audit fixes landed: `multiFileCtr.Destroy` status mapping + redundant `string(Kind)` drop
 (`d7cf0de`); `app-fragments.md` refreshed to the 0.9 API + exclusive-bucket warning
@@ -77,9 +84,10 @@ exported as `files.CleanupJob` and callers seed it directly with
 fresh DB seeds cleanly from any context. Ergonomic auto-seeding remains **deferred to the
 subsystem refactor** (TODO item above).
 
-**Next `/ace` — two open decisions for chakrit:** (1) release v0.9.0 now
-(`./platform release --minor`; CHANGELOG staged under Unreleased); (2) scope the subsystem
-refactor. Push waits on chakrit either way.
+**Next `/ace` — the v0.9.0 work is complete and committed; two open items for chakrit:**
+(1) push `main` and tag the release (`./platform release --minor`; CHANGELOG staged under
+Unreleased); (2) scope the subsystem refactor (incl. cleanup batch handling, deferred this
+session). Push waits on chakrit.
 
 Follow-up: the **`prod9-fx` school skill** documents the old files API (`files.NewApp(client)`,
 `WithClient`, `WithLinkAge`) — now removed; propose a skill update (via `ace-school`) after
