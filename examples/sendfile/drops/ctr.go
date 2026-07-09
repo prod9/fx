@@ -2,6 +2,7 @@ package drops
 
 import (
 	"net/http"
+	"strings"
 
 	"fx.prodigy9.co/app/files"
 	"fx.prodigy9.co/config"
@@ -14,7 +15,8 @@ import (
 // and image types plus arbitrary binaries via application/octet-stream.
 var fileKind = files.Kind{
 	Name:      "drop",
-	OwnerType: "drop",
+	Multiple:  false,
+	OwnerType: "token",
 	ContentTypes: []string{
 		"application/octet-stream",
 		"application/pdf",
@@ -29,7 +31,7 @@ type Ctr struct{}
 
 var _ controllers.Interface = Ctr{}
 
-func (c Ctr) Mount(cfg *config.Source, router chi.Router) error {
+func (c Ctr) Mount(cfg *config.Source, router chi.Router) (err error) {
 	router.Post("/drops", c.Create)
 
 	// The files controller resolves the owner (the drop) from the URL token, then
@@ -37,13 +39,12 @@ func (c Ctr) Mount(cfg *config.Source, router chi.Router) error {
 	// Writes are opt-in (the controller defaults to read-only).
 	fileCtr := files.Controller(fileKind,
 		files.WithMode(files.ModeReadWrite),
-		files.WithOwnerIDFunc(ownerIDFromToken))
+		files.WithOwnerIDFunc(getDropID))
 
-	var mountErr error
-	router.Route("/d/{token}/file", func(r chi.Router) {
-		mountErr = fileCtr.Mount(cfg, r)
+	router.Route("/d/{token}", func(r chi.Router) {
+		err = fileCtr.Mount(cfg, r)
 	})
-	return mountErr
+	return err
 }
 
 func (c Ctr) Create(resp http.ResponseWriter, req *http.Request) {
@@ -55,8 +56,8 @@ func (c Ctr) Create(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func ownerIDFromToken(req *http.Request) int64 {
-	token := chi.URLParam(req, "token")
+func getDropID(req *http.Request) int64 {
+	token := strings.TrimSpace(chi.URLParam(req, "token"))
 	if token == "" {
 		return 0
 	}

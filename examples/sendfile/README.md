@@ -30,13 +30,13 @@ arrived (older than 24h).
 
 ## Routes
 
-| Method | Path               | Purpose                                             |
-|--------|--------------------|-----------------------------------------------------|
-| POST   | `/drops`           | Create a drop → `{ "token": "…" }`                  |
-| POST   | `/d/{token}/file`  | Register a file → `{ file_info, upload_url }`       |
-| PUT    | *upload_url*       | Upload bytes directly to `blobserver` (presigned)   |
-| GET    | `/d/{token}/file`  | 307 → presigned GET; the share link a friend opens  |
-| DELETE | `/d/{token}/file`  | Remove the file                                     |
+| Method | Path         | Purpose                                             |
+|--------|--------------|-----------------------------------------------------|
+| POST   | `/drops`     | Create a drop → `{ "token": "…" }`                  |
+| POST   | `/d/{token}` | Register a file → `{ file_info, upload_url }`       |
+| PUT    | *upload_url* | Upload bytes directly to `blobserver` (presigned)   |
+| GET    | `/d/{token}` | 307 → presigned GET; the share link a friend opens  |
+| DELETE | `/d/{token}` | Remove the file                                     |
 
 ## Running
 
@@ -76,7 +76,7 @@ TOKEN=$(curl -s -XPOST localhost:3000/drops | sed -n 's/.*"token":"\([a-f0-9]*\)
 # 2. register the file, get a presigned upload URL
 echo "secret weekend plans" > plans.txt
 SIZE=$(wc -c < plans.txt | tr -d ' ')
-UPLOAD_URL=$(curl -s -XPOST "localhost:3000/d/$TOKEN/file" \
+UPLOAD_URL=$(curl -s -XPOST "localhost:3000/d/$TOKEN" \
   -H 'content-type: application/json' \
   -d "{\"original_name\":\"plans.txt\",\"content_type\":\"text/plain\",\"content_length\":$SIZE}" \
   | sed -n 's/.*"upload_url":"\([^"]*\)".*/\1/p')
@@ -85,8 +85,8 @@ UPLOAD_URL=$(curl -s -XPOST "localhost:3000/d/$TOKEN/file" \
 curl -XPUT --upload-file plans.txt "$UPLOAD_URL"
 
 # 4. the share link — what you send your friend
-curl -sL "localhost:3000/d/$TOKEN/file"     # → secret weekend plans
+curl -sL "localhost:3000/d/$TOKEN"     # → secret weekend plans
 ```
 
-The uploaded bytes land at `tmp/blobstore/sendfile/drop/drop/<dropID>/<fileID>`;
+The uploaded bytes land at `tmp/blobstore/sendfile/token/drop/<dropID>/<fileID>`;
 the row in `files` records the name, content type, and size.
