@@ -2,13 +2,14 @@ package blobstore
 
 import (
 	"context"
+
 	"fx.prodigy9.co/config"
 )
 
 var (
 	// ex: s3://key:secret@endpoint/bucket
-	StorgeURLConfig = config.Str("STORAGE_URL")
-	DefaultClient   = NewClient(nil)
+	StorageURLConfig = config.Str("STORAGE_URL")
+	DefaultClient    = NewClient(nil)
 )
 
 func PresignedGetURL(ctx context.Context, key string, options ...Option) (string, error) {

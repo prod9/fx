@@ -142,7 +142,7 @@ func (s *Client) initMinio() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s3url, err := url.Parse(config.Get(s.cfg, StorgeURLConfig))
+	s3url, err := url.Parse(config.Get(s.cfg, StorageURLConfig))
 	if err != nil {
 		return fmt.Errorf("blobstore: %w", err)
 	}

@@ -1,7 +1,7 @@
 package store
 
 import (
-	"fx.prodigy9.co/blobserver"
+	"fx.prodigy9.co/blobstore/blobserver"
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/fxlog"
 	"github.com/spf13/cobra"
