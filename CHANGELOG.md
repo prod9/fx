@@ -5,13 +5,13 @@
 Next release is **v0.9.0** — the `files` changes below are breaking.
 
 * **blobstore / blobserver / store:** New local disk blob server
-  (`blobstore/blobserver`) exposing the S3 verbs `blobstore` uses — GET/PUT/DELETE plus
-  a `ListObjectsV2` handler — over a local directory, so apps can develop against on-disk
-  blobs before pointing at live S3. New `store` command group (`serve`, `upload`,
-  `download`, `presign-get`, `presign-put`, `delete`). `blobstore` now selects transport
-  from the `STORAGE_URL` scheme (`s3`/`https` TLS, `http` for the local server), adds
-  `ListObjects`, and fixes the misspelled `StorgeURLConfig` identifier to
-  `StorageURLConfig` (the `STORAGE_URL` env name is unchanged).
+  (`blobstore/blobserver`) exposing the S3 verbs `blobstore` uses — GET/PUT/DELETE/HEAD —
+  over a local directory, so apps can develop against on-disk blobs before pointing at
+  live S3. New `store` command group (`serve`, `upload`, `download`, `presign-get`,
+  `presign-put`, `delete`). `blobstore` now selects transport from the `STORAGE_URL`
+  scheme (`s3`/`https` TLS, `http` for the local server), adds `ObjectExists`, and fixes
+  the misspelled `StorgeURLConfig` identifier to `StorageURLConfig` (the `STORAGE_URL` env
+  name is unchanged).
 * **files:** *Breaking.* Redesigned the controller API and made the fragment
   self-contained:
   - Removed `NewApp` and all `*blobstore.Client` threading (`WithClient`, the client
@@ -25,9 +25,11 @@ Next release is **v0.9.0** — the `files` changes below are breaking.
     `WithMode(ModeReadWrite)` (fail-closed).
   - Added `Kind.MaxSize` (bytes; `0` ⇒ 256 MiB default, `-1` ⇒ unlimited), enforced in
     `CreateFile` with a coded field error before a presigned PUT is minted.
-  - `files.App` now registers a `files.cleanup` worker that reconciles the store against
-    the `files` table — deleting orphaned objects and pruning abandoned rows (older than
-    24h). Start it explicitly with `files.ScheduleCleanup(ctx)`.
+  - `files.App` now registers a `files-cleanup` worker that prunes abandoned uploads —
+    rows whose object never landed and that are older than 24h — probing each candidate
+    row's object directly rather than enumerating the bucket, so the sweep never deletes
+    objects. Seed the first run once at startup with
+    `worker.ScheduleNowIfNotExists(ctx, files.CleanupJob)`; it reschedules itself thereafter.
 * **audit:** Document downstream ledger reconciliation for a service adopting the fragment
   in place of its own local audit migration — reset a disposable DB, or resync/recover the
   ledger so fx's migration records as already-applied.

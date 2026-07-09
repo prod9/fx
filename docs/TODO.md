@@ -54,27 +54,32 @@ Fixed (`e7e1739`). Landed follow-ups:
   init write-lock and every read passes through `getMinio`'s RLock first, so it's safely
   published; `-race` would not flag it.
 
-**Known residual (deferred):** the windowed cleanup still can't reclaim an orphan from a
-*very old* file if the object delete fails partway — the leaked object's id is below the
-floor, so no later sweep reconsiders it. Acceptable for now; revisit with a periodic deep
-reconcile (or a delete-retry ledger) later.
+**Superseded 2026-07-10 — cleanup reworked to DB-driven probing.** The windowing + id-floor
+above is gone. `runCleanup` now iterates recent `files` rows and probes each object directly
+via `blobstore.ObjectExists` (new; minio `StatObject`, blobserver gained a HEAD handler),
+pruning only rows whose object never landed — it never enumerates or deletes from the
+bucket. This retires the whole-bucket `ListObjects` (cut from `blobstore` + blobserver as a
+`ListObjectsV2` pagination footgun) and the below-floor residual: orphan objects (object
+with no row) are now **out of scope by design**, not a deferred reclaim — a failed `Destroy`
+object-delete leaks permanently, judged acceptable (the row-first upload flow makes it
+rare). Fail-fast on the first probe/delete error (all systemic), so a broken store can never
+produce a batch-sized error storm. `runCleanup` now has end-to-end coverage (`TestRunCleanup`,
+blobserver + test DB). **Deferred:** batch handling in the sweep (fine for now).
 
 Untouched nits from the same pass (not landed): example/CLI (`download_cmd` truncates dest
 on mid-copy failure; `sendfile/drops/ctr.go` magic `500` + `getDropID` sentinel-`0`
 collapsing DB-error/not-found).
 
-**Cleanup-worker seeding is unresolved / in flux.** `files.ScheduleCleanup` still exists in
-code, but the explicit-seed docs + the sendfile seed command were torn out (dropped commit
-`a2f696e`; spec seeding paragraph removed). Foundation landed instead: `ensureJobsTable` now
-runs at the jobs-access entry primitives (`62dd987`, `d47a600`) — a job can be scheduled or
-polled from any context on a fresh DB. Ergonomic auto-seeding of `files.cleanup` is
-**deferred to the subsystem refactor** (TODO item above). sendfile: chakrit re-addressed
-drops to `/d/{token}` w/ `OwnerType=token` (`393b704`).
+**Cleanup-worker seeding — resolved.** `files.ScheduleCleanup` removed; the job instance is
+exported as `files.CleanupJob` and callers seed it directly with
+`worker.ScheduleNowIfNotExists(ctx, files.CleanupJob)` (sendfile `main` does this). Backed by
+`ensureJobsTable` running at the jobs-access entry primitives (`62dd987`, `d47a600`), so a
+fresh DB seeds cleanly from any context. Ergonomic auto-seeding remains **deferred to the
+subsystem refactor** (TODO item above).
 
 **Next `/ace` — two open decisions for chakrit:** (1) release v0.9.0 now
-(`./platform release --minor`; CHANGELOG staged under Unreleased) or hold for the
-cleanup-seeding ergonomics; (2) scope the subsystem refactor. Push waits on chakrit either
-way.
+(`./platform release --minor`; CHANGELOG staged under Unreleased); (2) scope the subsystem
+refactor. Push waits on chakrit either way.
 
 Follow-up: the **`prod9-fx` school skill** documents the old files API (`files.NewApp(client)`,
 `WithClient`, `WithLinkAge`) — now removed; propose a skill update (via `ace-school`) after

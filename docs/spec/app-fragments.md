@@ -126,11 +126,6 @@ app.Build().
   Start()
 ```
 
-> **`files.App` must own its `STORAGE_URL` bucket exclusively.** The `files.cleanup`
-> worker reconciles the bucket against the `files` table and deletes every object without
-> an owning row. Any non-files object in the same bucket **will** be removed by the sweep
-> — give `files` its own bucket.
-
 **Defining file kinds** — each kind describes a type of file attachment:
 
 ```go
@@ -175,6 +170,9 @@ func (c *UserCtr) Mount(cfg *config.Source, r chi.Router) error {
 The presigned URL TTL is a fixed 1-minute package constant — access is gated by the route
 that embeds the controller, so the TTL is policy, not a per-request knob.
 
-**Cleanup worker** — `files.App` registers a `files.cleanup` worker that reconciles the
-store against the `files` table (deleting orphaned objects, pruning rows whose upload was
-abandoned for over 24h).
+**Cleanup worker** — `files.App` registers a `files-cleanup` worker that prunes abandoned
+uploads: rows whose object never landed and that are older than 24h. It is driven off the
+`files` table — each candidate row's object is probed directly — so it never enumerates or
+deletes from the bucket; only `files` rows are removed. It is inert until seeded: call
+`worker.ScheduleNowIfNotExists(ctx, files.CleanupJob)` once at startup (with a running
+`worker` process); the job reschedules itself thereafter.
