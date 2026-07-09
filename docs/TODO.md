@@ -7,6 +7,66 @@ rather than inside them.
 
 ## Open
 
+### `app/files` audit — fix-all slate, breaking (targets v0.9.0) — 2026-07-05
+
+**Implemented 2026-07-09** (commits `29eb85a`..HEAD); **release pending** — tag/push
+`v0.9.0` when ready (`./platform release --minor`, CHANGELOG entry already staged under
+Unreleased). Struck #8 (Mode typing — no value). Note #10 kept `WithMode`/`WithOwnerIDFunc`
+as functional options (chakrit: keep the two, they're fine) rather than an Options struct.
+Follow-up: the **`prod9-fx` school skill** documents the old files API (`files.NewApp(client)`,
+`WithClient`, `WithLinkAge`) — now removed; propose a skill update after the release lands.
+Original plan below, for the record:
+
+
+Audit of `app/files` (ported from `bluepages/api/files` in `bfd7081`, 2026-03-04, Chakrit
++ Opus 4.6 — the `With*`/`NewApp(client)` parameterization was added *during* that port,
+not verbatim bluepages, not this-session Opus). chakrit's call: fix everything below,
+including the builder redesign; bump 0.8 → **0.9.0** since the controller API breaks.
+Walking via `1-by-1`; decisions collected before any edit.
+
+Findings (audit numbering):
+1. **Single-file kind doesn't enforce single.** `create_file.go:47` unconditional INSERT;
+   `single_file_ctr.go:76` never deletes prior row/object → repeat upload orphans the old
+   object in the store. Real data-loss-adjacent leak.
+2. **`DestroyUniqueFile` mishandles multi-row** (`file.go:131`): `DELETE … RETURNING *`
+   into single-row `data.Get`; with accumulated rows (from #1) all DB rows deleted but only
+   one object removed → orphans. #1+#2 are one fix: single-file replace-on-create semantics.
+3. **`NewApp(client)` ignores its param** (`files.go:27`, `_ = client`) — misleading;
+   constructs no controllers, only embeds migrations. Drop the param or actually wire it.
+4. **`WithKind` redundant** (`base_ctr.go:55`) — kind already positional to `Controller`.
+5. **No tests** for the whole package (mode gating, owner resolution, single/multi, presign,
+   S3 delete). Bugs #1–#2 live in the untested surface.
+6. **Three client mechanisms, one fake** — global `STORAGE_URL`, per-ctr `WithClient`, dead
+   `NewApp(client)`; `if client != nil … else global` repeated 3× in `file.go`. Consolidate.
+7. **Metadata client-asserted, never verified** — `content_length`/`content_type` trusted
+   into DB in `CreateFile`; no post-upload reconcile, no size cap. Document the trust model.
+8. **`Mode` constants untyped** (`files.go:39`) — `type Mode uint8` declared but
+   `ModeReadOnly`/`ModeReadWrite` are untyped ints in the iota block.
+9. **Two link-age fields** — `baseCtr.linkAge` + `{single,multi}FileCtr.linkAgeCfg`; relies
+   on value-receiver mount-mutation persisting into bound method values. Collapse to one.
+10. **`With*` functional-options → plain funcs / options struct** (the big one) — matches
+    the standing `docs/TODO.md:25` "builder/fluent un-go-like" preference. Breaking; drives
+    the 0.9.0 bump. Redesign the `Controller(kind, …Option)` surface.
+
+Cross-cutting: 0.9.0 CHANGELOG + release; downstream (`files.App` consumers, sendfile
+example) updated to the new controller API.
+
+### fx-wide error conventions audit — 2026-07-09
+
+Audit the whole codebase for error-handling conventions and establish a written standard,
+then align packages to it. Questions to settle:
+- When to define a sentinel (`errors.New`/`Err*`) vs decorate with `errutil.WithCode`/
+  `WithData`/`Wrap` vs a `validate` field error — no consistent rule today.
+- How HTTP status is chosen. `render.Error` takes `status` as an explicit arg
+  (`httpserver/render/render.go:34` inline TODO already flags this breaks SRP — the
+  originating error should carry its code, not the controller). Fold that TODO in here.
+- Error `code`/`description` consistency across packages (`httperrors` constants vs
+  ad-hoc `fmt.Errorf` strings vs coded errors).
+
+Output: a decision/spec fixing the convention, then a sweep aligning packages. Surfaced
+2026-07-09 during the `app/files` redesign — the files `MaxSize` rejection needs a
+well-defined coded error, which exposed the absence of a codebase-wide rule.
+
 ### Prompts redesign shipped as v0.8.6 (2026-06-22) — two loose ends
 
 `cmd/prompts` reimplemented hand-rolled on `golang.org/x/term`; dropped `pterm` + ~10
@@ -152,6 +212,22 @@ Direction to consider:
 - **Rethink:** the disk-vs-embed distinction is a deploy-shape concern; maybe
   the migrator should take an explicit ordered list of sources and let the
   app/cmd decide precedence per-environment.
+- **Fragmentize migrations (chakrit, 2026-07-05 — chosen next-work direction):**
+  make migrations a first-class fragment-composition output. The app already
+  merges controllers, commands, jobs, and middlewares deterministically up the
+  `Mount` tree (`app.collect`); migration *sources* should ride the same merge
+  instead of being handed off to `migrator.LoadAuto`'s disk-vs-embed heuristic.
+  Then aggregation is decided by app composition (predictable), and the migrator
+  just runs whatever ordered set the app hands it — no CWD-scan short-circuit,
+  no clean-CWD workaround. Supersedes the earlier "merging may not be right,
+  needs think-time" hold: the fix moves up a layer rather than patching
+  `LoadAuto` in place.
+
+Surfaced again 2026-07-05 building `examples/sendfile` (files.App + blobserver):
+`go run . data migrate` from the example dir applied only the local `drops`
+migration and silently skipped the embedded `files` table — same footgun. The
+example README documents the build-and-run-from-clean-CWD path until the
+fragmentize work lands.
 
 Not urgent; flag for the next time someone hits the "my migration didn't run"
 surprise.

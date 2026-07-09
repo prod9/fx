@@ -26,10 +26,11 @@ region so presigning skips the `GetBucketLocation` handshake that a live S3 perf
 
 ## Local development — `blobserver`
 
-`blobserver` is a minimal, real object store over a local directory. It serves the
-GET/PUT/DELETE verbs `blobstore` emits against S3, persisting objects as plain files —
-no auth, listing, or ACLs. It exists so you can develop against on-disk blobs before
-pointing `STORAGE_URL` at a live S3.
+`blobserver` (`blobstore/blobserver`) is a minimal, real object store over a local
+directory. It serves the verbs `blobstore` emits against S3 — GET/PUT/DELETE plus a
+`ListObjectsV2` for reconciliation — persisting objects as plain files, with no auth or
+ACLs. It exists so you can develop against on-disk blobs before pointing `STORAGE_URL` at
+a live S3.
 
 ```sh
 go run . store serve   # serve BLOBSERVER_DIR over BLOBSERVER_ADDR

@@ -70,8 +70,8 @@ configuration issues.
 | `validate`               | Input validation helpers                                                   |
 | `errutil`                | Error decoration (`WithCode`, `WithData`, `Wrap`)                          |
 | `cache`                  | In-memory / Redis caching abstraction                                      |
-| `blobstore`              | S3-compatible object storage (presigned URLs; scheme-selected transport)   |
-| `blobserver`             | Local disk blob server for dev (`store serve`); S3 GET/PUT/DELETE on disk  |
+| `blobstore`              | S3-compatible object storage (presigned URLs, `ListObjects`; scheme transport) |
+| `blobstore/blobserver`   | Local disk blob server for dev (`store serve`); S3 GET/PUT/DELETE + list    |
 | `secret`                 | AES-256-GCM encryption (`Hide`/`Reveal`)                                   |
 | `passwords`              | bcrypt password hashing                                                    |
 | `mailer`                 | Postmark email integration                                                 |
