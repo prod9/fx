@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## v0.9.0
 
-Next release is **v0.9.0** — the `files` changes below are breaking.
+The `files` changes below are breaking.
 
 * **blobstore / blobserver / store:** New local disk blob server
   (`blobstore/blobserver`) exposing the S3 verbs `blobstore` uses — GET/PUT/DELETE/HEAD —
