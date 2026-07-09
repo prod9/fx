@@ -111,25 +111,25 @@ app.Build().
 Provides CRUD functions: `settings.List()`, `settings.Get()`, `settings.Set()`,
 `settings.Delete()`.
 
-### `files.App` / `files.NewApp(client)`
+### `files.App`
 
 S3-backed file management with presigned URL uploads, metadata stored in PostgreSQL,
-and single/multi-file controllers. Uses the `blobstore` package for S3 operations.
+and single/multi-file controllers. The store is reached through the global `blobstore`
+funcs (config-driven via `STORAGE_URL`) — the fragment is self-contained, so mounting it
+takes no client:
 
 ```go
 import "fx.prodigy9.co/app/files"
 
-// Mount the fragment for migrations (uses global blobstore)
 app.Build().
   Mount(files.App).
   Start()
-
-// Or with a specific blobstore client
-client := blobstore.NewClient(cfg)
-app.Build().
-  Mount(files.NewApp(client)).
-  Start()
 ```
+
+> **`files.App` must own its `STORAGE_URL` bucket exclusively.** The `files.cleanup`
+> worker reconciles the bucket against the `files` table and deletes every object without
+> an owning row. Any non-files object in the same bucket **will** be removed by the sweep
+> — give `files` its own bucket.
 
 **Defining file kinds** — each kind describes a type of file attachment:
 
@@ -142,6 +142,7 @@ var userAvatar = files.Kind{
 var projectDocs = files.Kind{
   Name: "project-doc", Multiple: true,
   OwnerType: "project", ContentTypes: []string{"application/pdf", "image/png"},
+  MaxSize: 20 << 20, // 20 MiB cap; 0 ⇒ 256 MiB default, -1 ⇒ unlimited
 }
 ```
 
@@ -151,8 +152,7 @@ var projectDocs = files.Kind{
 func (c *UserCtr) Mount(cfg *config.Source, r chi.Router) error {
   r.Route("/users/{id}/avatar", func(r chi.Router) {
     files.Controller(userAvatar,
-      files.WithMode(files.ModeReadOnly),
-      files.WithLinkAge(5*time.Minute),
+      files.WithMode(files.ModeReadWrite),
     ).Mount(cfg, r)
   })
   return nil
@@ -165,17 +165,16 @@ func (c *UserCtr) Mount(cfg *config.Source, r chi.Router) error {
 * `true` → multi-file controller (`GET /`, `GET /{fileID}`, `GET /{fileID}/meta`,
   `POST /`, `DELETE /{fileID}`)
 
-**Controller options:**
+**Controller options** (kind is the positional arg, not an option):
 
-* `WithKind(kind)` — Override the file kind.
-* `WithMode(mode)` — `ModeReadOnly` or `ModeReadWrite` (default).
+* `WithMode(mode)` — `ModeReadOnly` (default) or `ModeReadWrite`. Writes are opt-in:
+  read/write endpoints only mount when `ModeReadWrite` is set.
 * `WithOwnerIDFunc(func(*http.Request) int64)` — Custom owner ID extraction (default:
   reads `{id}` URL param).
-* `WithClient(*blobstore.Client)` — Use a specific blobstore client instead of the
-  global default.
-* `WithLinkAge(duration)` — Per-controller presigned URL expiry override.
 
-**Configuration:**
+The presigned URL TTL is a fixed 1-minute package constant — access is gated by the route
+that embeds the controller, so the TTL is policy, not a per-request knob.
 
-* `FILE_LINK_AGE` — App-wide default presigned URL expiry (default: `1m`). Override
-  per-controller with `WithLinkAge`.
+**Cleanup worker** — `files.App` registers a `files.cleanup` worker that reconciles the
+store against the `files` table (deleting orphaned objects, pruning rows whose upload was
+abandoned for over 24h).

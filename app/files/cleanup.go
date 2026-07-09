@@ -53,6 +53,10 @@ type cleanupPlan struct {
 // planCleanup is the pure cleanup decision: an object with no owning row is an orphan to
 // delete; a row whose object never arrived and is older than dead is an abandoned upload
 // to prune. A young row with no object yet is an upload in progress and is left alone.
+//
+// This assumes files.App owns the STORAGE_URL bucket exclusively: every object without a
+// files row is treated as an orphan and deleted. Any non-files object in the same bucket
+// WILL be removed by the sweep — give files its own bucket.
 func planCleanup(rows []cleanupRow, storeKeys []string, now time.Time, dead time.Duration) cleanupPlan {
 	rowByPath := make(map[string]cleanupRow, len(rows))
 	for _, r := range rows {

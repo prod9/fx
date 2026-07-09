@@ -23,16 +23,10 @@ file to it, hand the link to a friend, they download it.
 
 `files.App` registers a `files.cleanup` worker that reconciles the store against the
 `files` table — deleting objects with no owning row and pruning rows whose upload never
-arrived (older than 24h). Registration is automatic on mount; **starting** it is
-deliberately explicit so the schedule stays visible and wrappable:
+arrived (older than 24h).
 
-```go
-files.ScheduleCleanup(ctx)   // once, with a DB-bearing context, then run: go run . worker
-```
-
-This example doesn't wire it (the send-a-file flow doesn't need it) — a production app
-seeds it once after the worker has initialized its `jobs` table, then leaves the worker
-running; the job reschedules itself hourly.
+> The `files.cleanup` sweep deletes every bucket object without an owning `files` row, so
+> `files.App` must own its `STORAGE_URL` bucket exclusively.
 
 ## Routes
 
