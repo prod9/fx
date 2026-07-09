@@ -84,11 +84,18 @@ type Job struct {
 	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
 }
 
-func createJobsTable(ctx context.Context) error {
+// ensureJobsTable creates the jobs table if absent. It is idempotent (all DDL is IF NOT
+// EXISTS), so the schedule primitives call it lazily on every touch — a job can be
+// scheduled from any context, on a fresh database, without a prior setup step.
+func ensureJobsTable(ctx context.Context) error {
 	return data.Exec(ctx, CreateJobsTableSQL)
 }
 
 func findPendingJobByName(ctx context.Context, name string) (*Job, error) {
+	if err := ensureJobsTable(ctx); err != nil {
+		return nil, err
+	}
+
 	job := &Job{}
 	err := data.Get(ctx, job, FindPendingJobByNameSQL, name)
 	if err != nil {
@@ -99,6 +106,9 @@ func findPendingJobByName(ctx context.Context, name string) (*Job, error) {
 }
 
 func scheduleJob(ctx context.Context, name string, payload []byte, t time.Time) (*Job, error) {
+	if err := ensureJobsTable(ctx); err != nil {
+		return nil, err
+	}
 	if t.IsZero() {
 		t = time.Now()
 	}

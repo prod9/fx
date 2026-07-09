@@ -140,7 +140,7 @@ func (w *Worker) Start() (err error) {
 		w.Lock()
 		defer w.Unlock()
 
-		if err = createJobsTable(ctx); err != nil {
+		if err = ensureJobsTable(ctx); err != nil {
 			cancel(err)
 			return
 		}
