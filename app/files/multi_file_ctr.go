@@ -119,7 +119,11 @@ func (f multiFileCtr) Destroy(resp http.ResponseWriter, req *http.Request) {
 
 	key := f.kind.key(ownerID, fileID)
 	if file, err := DestroyFile(req.Context(), key); err != nil {
-		render.Error(resp, req, 404, httperrors.ErrNotFound)
+		if data.IsNoRows(err) {
+			render.Error(resp, req, 404, httperrors.ErrNotFound)
+		} else {
+			render.Error(resp, req, 500, err)
+		}
 	} else {
 		render.JSON(resp, req, file)
 	}

@@ -45,7 +45,7 @@ func (f *File) PresignedPutURL(ctx context.Context) (string, error) {
 
 func (f *File) RemotePath() string {
 	return f.OwnerType + "/" +
-		string(f.Kind) + "/" +
+		f.Kind + "/" +
 		strconv.FormatInt(f.OwnerID, 10) + "/" +
 		strconv.FormatInt(f.ID, 10)
 }
