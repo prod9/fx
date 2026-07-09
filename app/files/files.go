@@ -7,28 +7,22 @@ import (
 	"time"
 
 	"fx.prodigy9.co/app"
-	"fx.prodigy9.co/blobstore"
-	"fx.prodigy9.co/config"
 	"github.com/go-chi/chi/v5"
 )
 
 //go:embed *.sql
 var migrations embed.FS
 
-// LinkAgeConfig is the app-wide default for presigned URL expiry.
-// Override per-controller with WithLinkAge option.
-var LinkAgeConfig = config.DurationDef("FILE_LINK_AGE", 1*time.Minute)
+// linkAge is the presigned URL TTL. Access is gated one level up (the route that
+// embeds the files controller), so the TTL is a fixed policy, not a per-request knob.
+const linkAge = 1 * time.Minute
 
-// App is the default files app fragment using the global blobstore functions.
-var App = NewApp(nil)
-
-// NewApp creates a files app fragment with an optional specific blobstore client.
-// Pass nil to use the global blobstore functions.
-func NewApp(client *blobstore.Client) *app.Builder {
-	_ = client // stored for reference; controllers receive client via WithClient option
-	return app.Build().
-		EmbedMigrations(migrations)
-}
+// App is the files fragment: the files metadata table plus the reconciliation worker
+// that prunes orphaned rows and objects. Mount it, then embed files.Controller(...)
+// into your own routes to expose upload/download endpoints.
+var App = app.Build().
+	Name("files").
+	EmbedMigrations(migrations)
 
 var ImageTypes = []string{
 	"image/jpeg",

@@ -2,7 +2,6 @@ package files
 
 import (
 	"net/http"
-	"time"
 
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
@@ -14,14 +13,11 @@ import (
 
 type singleFileCtr struct {
 	baseCtr
-	linkAgeCfg time.Duration // resolved from config at mount time
 }
 
 var _ controllers.Interface = singleFileCtr{}
 
 func (f singleFileCtr) Mount(cfg *config.Source, r chi.Router) error {
-	f.linkAgeCfg = f.resolveLinkAge(cfg)
-
 	if f.mode&modeRead > 0 {
 		r.Get("/", f.Get)
 		r.Get("/meta", f.GetMeta)
@@ -47,7 +43,7 @@ func (f singleFileCtr) Get(resp http.ResponseWriter, req *http.Request) {
 		} else {
 			render.Error(resp, req, 500, err)
 		}
-	} else if url, err := file.PresignedGetURL(req.Context(), f.client, f.linkAgeCfg); err != nil {
+	} else if url, err := file.PresignedGetURL(req.Context()); err != nil {
 		render.Error(resp, req, 500, httperrors.ErrInternal)
 	} else {
 		render.Redirect(resp, req, url)
@@ -86,7 +82,7 @@ func (f singleFileCtr) Create(resp http.ResponseWriter, req *http.Request) {
 	}, &File{}
 	if err := controllers.ExecuteAction(resp, req, action, file); err != nil {
 		render.Error(resp, req, 400, err)
-	} else if info, err := UploadInfoFromFile(req.Context(), f.client, file, f.linkAgeCfg); err != nil {
+	} else if info, err := UploadInfoFromFile(req.Context(), file); err != nil {
 		render.Error(resp, req, 500, err)
 	} else {
 		render.JSON(resp, req, info)
@@ -101,7 +97,7 @@ func (f singleFileCtr) Destroy(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	key := f.kind.key(ownerID, 0)
-	if file, err := DestroyUniqueFile(req.Context(), f.client, key); err != nil {
+	if file, err := DestroyUniqueFile(req.Context(), key); err != nil {
 		render.Error(resp, req, 500, err)
 	} else {
 		render.JSON(resp, req, file)

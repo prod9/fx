@@ -31,24 +31,16 @@ type (
 	}
 )
 
-func (f *File) PresignedGetURL(ctx context.Context, client *blobstore.Client, age time.Duration) (string, error) {
-	opts := []blobstore.Option{blobstore.WithAge(age)}
-	if client != nil {
-		return client.PresignedGetURL(ctx, f.RemotePath(), opts...)
-	}
-	return blobstore.PresignedGetURL(ctx, f.RemotePath(), opts...)
+func (f *File) PresignedGetURL(ctx context.Context) (string, error) {
+	return blobstore.PresignedGetURL(ctx, f.RemotePath(), blobstore.WithAge(linkAge))
 }
 
-func (f *File) PresignedPutURL(ctx context.Context, client *blobstore.Client, age time.Duration) (string, error) {
-	opts := []blobstore.Option{
-		blobstore.WithAge(age),
+func (f *File) PresignedPutURL(ctx context.Context) (string, error) {
+	return blobstore.PresignedPutURL(ctx, f.RemotePath(),
+		blobstore.WithAge(linkAge),
 		blobstore.WithContentType(f.ContentType),
 		blobstore.WithContentLength(f.ContentLength),
-	}
-	if client != nil {
-		return client.PresignedPutURL(ctx, f.RemotePath(), opts...)
-	}
-	return blobstore.PresignedPutURL(ctx, f.RemotePath(), opts...)
+	)
 }
 
 func (f *File) RemotePath() string {
@@ -107,7 +99,7 @@ func ListFiles(ctx context.Context, key FileKey, pm page.Meta) (*page.Page[*File
 	}
 }
 
-func DestroyFile(ctx context.Context, client *blobstore.Client, key FileKey) (*File, error) {
+func DestroyFile(ctx context.Context, key FileKey) (*File, error) {
 	sql := `
 	DELETE FROM files
 	WHERE kind = $1 AND owner_type = $2 AND owner_id = $3 AND id = $4
@@ -122,13 +114,13 @@ func DestroyFile(ctx context.Context, client *blobstore.Client, key FileKey) (*F
 		return nil, err
 	}
 
-	if err := deleteObject(ctx, client, file.RemotePath()); err != nil {
+	if err := blobstore.DeleteObject(ctx, file.RemotePath()); err != nil {
 		return file, err
 	}
 	return file, nil
 }
 
-func DestroyUniqueFile(ctx context.Context, client *blobstore.Client, key FileKey) (*File, error) {
+func DestroyUniqueFile(ctx context.Context, key FileKey) (*File, error) {
 	sql := `
 	DELETE FROM files
 	WHERE kind = $1 AND owner_type = $2 AND owner_id = $3
@@ -143,15 +135,8 @@ func DestroyUniqueFile(ctx context.Context, client *blobstore.Client, key FileKe
 		return nil, err
 	}
 
-	if err := deleteObject(ctx, client, file.RemotePath()); err != nil {
+	if err := blobstore.DeleteObject(ctx, file.RemotePath()); err != nil {
 		return file, err
 	}
 	return file, nil
-}
-
-func deleteObject(ctx context.Context, client *blobstore.Client, key string) error {
-	if client != nil {
-		return client.DeleteObject(ctx, key)
-	}
-	return blobstore.DeleteObject(ctx, key)
 }

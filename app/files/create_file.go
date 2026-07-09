@@ -3,6 +3,7 @@ package files
 import (
 	"context"
 	"mime"
+	"strconv"
 
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/validate"
@@ -21,10 +22,17 @@ func (c *CreateFile) Validate() error {
 	return validate.Multi(
 		c.validateKind(),
 		c.validateContentType(),
+		c.validateSize(),
 		validate.Positive("owner_id", c.OwnerID),
 		validate.Required("original_name", c.OriginalName),
 		validate.Positive("content_length", c.ContentLength),
 	)
+}
+func (c *CreateFile) validateSize() error {
+	if c.Kind.allowsSize(c.ContentLength) {
+		return nil
+	}
+	return validate.NewFieldError("content_length", "too_large", strconv.FormatInt(c.ContentLength, 10))
 }
 func (c *CreateFile) validateKind() error {
 	return validate.Group("kind",
