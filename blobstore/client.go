@@ -109,6 +109,30 @@ func (s *Client) ForceDeleteObject(ctx context.Context, key string) error {
 	}
 }
 
+// ListObjects returns every object key in the bucket under the given prefix (empty
+// prefix lists all). Used by reconciliation sweeps that diff the store against a
+// database of known objects.
+func (s *Client) ListObjects(ctx context.Context, prefix string) ([]string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	client, err := s.tryGetMinio()
+	if err != nil {
+		return nil, err
+	}
+
+	opts := minio.ListObjectsOptions{Prefix: prefix, Recursive: true}
+	var keys []string
+	for obj := range client.ListObjects(ctx, s.bucket, opts) {
+		if obj.Err != nil {
+			return nil, fmt.Errorf("blobstore: %w", obj.Err)
+		}
+		keys = append(keys, obj.Key)
+	}
+	return keys, nil
+}
+
 // secureFromScheme maps a STORAGE_URL scheme to minio's TLS toggle. Whitelisted:
 // s3 and https talk TLS (live endpoints); http targets a plaintext local blobserver.
 func secureFromScheme(scheme string) (bool, error) {

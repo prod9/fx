@@ -12,8 +12,9 @@ import (
 )
 
 // Handler is a minimal, path-style object store over a local directory. It serves
-// exactly the verbs blobstore emits against S3 — GET/PUT/DELETE on /{bucket}/{key} —
-// persisting objects as plain files under the root. No auth, listing, or ACLs.
+// the verbs blobstore emits against S3 — GET/PUT/DELETE on /{bucket}/{key} plus a
+// ListObjectsV2 (GET /{bucket}?list-type=2) for reconciliation — persisting objects as
+// plain files under the root. No auth or ACLs.
 type Handler struct {
 	root string
 }
@@ -23,6 +24,11 @@ func NewHandler(root string) *Handler {
 }
 
 func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	if req.Method == http.MethodGet && req.URL.Query().Has("list-type") {
+		h.list(resp, req)
+		return
+	}
+
 	full, ok := h.resolve(req.URL.Path)
 	if !ok {
 		http.Error(resp, "blobserver: invalid key", http.StatusBadRequest)

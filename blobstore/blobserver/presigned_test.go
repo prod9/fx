@@ -57,6 +57,31 @@ func TestPresignedRoundTripAgainstBlobserver(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "delete must remove the file")
 }
 
+// Gates that minio-go's ListObjects can parse blobserver's ListObjectsV2 XML — the
+// reconciliation sweep depends on it.
+func TestListObjectsAgainstBlobserver(t *testing.T) {
+	dir := t.TempDir()
+	srv := httptest.NewServer(blobserver.NewHandler(dir))
+	defer srv.Close()
+
+	host := must(url.Parse(srv.URL)).Host
+	cfg := fxtest.Configure()
+	config.Set(cfg, blobstore.StorageURLConfig, "http://key:secret@"+host+"/testbucket")
+	client := blobstore.NewClient(cfg)
+
+	ctx := context.Background()
+	for _, key := range []string{"a/one.txt", "b/two.txt"} {
+		putURL, err := client.PresignedPutURL(ctx, key)
+		require.NoError(t, err)
+		_, err = http.DefaultClient.Do(must(http.NewRequest(http.MethodPut, putURL, strings.NewReader("x"))))
+		require.NoError(t, err)
+	}
+
+	keys, err := client.ListObjects(ctx, "")
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"a/one.txt", "b/two.txt"}, keys)
+}
+
 func must[T any](v T, err error) T {
 	if err != nil {
 		panic(err)
