@@ -23,7 +23,7 @@ const linkAge = 1 * time.Minute
 var App = app.Build().
 	Name("files").
 	EmbedMigrations(migrations).
-	Job(filesCleanup)
+	Job(CleanupJob)
 
 var ImageTypes = []string{
 	"image/jpeg",

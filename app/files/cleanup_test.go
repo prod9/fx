@@ -1,69 +1,93 @@
 package files
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
+	"fx.prodigy9.co/blobstore"
+	"fx.prodigy9.co/blobstore/blobserver"
+	"fx.prodigy9.co/config"
+	"fx.prodigy9.co/data"
+	"fx.prodigy9.co/fxtest"
 	"github.com/stretchr/testify/require"
 )
 
-func TestPlanCleanup(t *testing.T) {
-	now := time.Date(2026, 7, 9, 12, 0, 0, 0, time.UTC)
-	old := now.Add(-48 * time.Hour) // past the dead timeout
-	fresh := now.Add(-1 * time.Minute)
-	dead := 24 * time.Hour
+// TestRunCleanup drives the sweep end to end against a test database and a local
+// blobserver: an abandoned row (no object, past dead) is pruned, while a healthy row
+// (object present), a young row (upload still in flight), and a row older than the query
+// window are all left in place.
+func TestRunCleanup(t *testing.T) {
+	ctx := fxtest.ConnectTestDatabase(t)
+	createFilesTable(t, ctx)
 
-	cases := []struct {
-		name       string
-		rows       []cleanupRow
-		storeKeys  []string
-		wantDelete []string
-		wantPrune  []int64
-	}{
-		{
-			name:      "matched row and object — no action",
-			rows:      []cleanupRow{{ID: 1, RemotePath: "drop/1/1", CreatedAt: old}},
-			storeKeys: []string{"drop/1/1"},
-		},
-		{
-			name:      "no records — no window, nothing reconciled",
-			rows:      nil,
-			storeKeys: []string{"drop/9/9"},
-		},
-		{
-			name:      "young row, object not yet uploaded — in flight, left alone",
-			rows:      []cleanupRow{{ID: 2, RemotePath: "drop/2/2", CreatedAt: fresh}},
-			storeKeys: nil,
-		},
-		{
-			name:      "old row, object never arrived — abandoned, pruned",
-			rows:      []cleanupRow{{ID: 3, RemotePath: "drop/3/3", CreatedAt: old}},
-			storeKeys: nil,
-			wantPrune: []int64{3},
-		},
-		{
-			name:       "in-window orphan — object above floor with no row, deleted",
-			rows:       []cleanupRow{{ID: 10, RemotePath: "drop/o/10", CreatedAt: old}},
-			storeKeys:  []string{"drop/o/10", "drop/o/11"},
-			wantDelete: []string{"drop/o/11"},
-		},
-		{
-			name:      "superseded orphan below floor — settled by earlier sweeps, skipped",
-			rows:      []cleanupRow{{ID: 5, RemotePath: "drop/s/5", CreatedAt: old}},
-			storeKeys: []string{"drop/s/2", "drop/s/5"},
-		},
-		{
-			name:      "unparseable key — ignored",
-			rows:      []cleanupRow{{ID: 4, RemotePath: "drop/4/4", CreatedAt: old}},
-			storeKeys: []string{"drop/4/4", "weird/key/abc"},
-		},
-	}
+	dir := t.TempDir()
+	srv := httptest.NewServer(blobserver.NewHandler(dir))
+	defer srv.Close()
 
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			plan := planCleanup(c.rows, c.storeKeys, now, dead)
-			require.ElementsMatch(t, c.wantDelete, plan.ObjectsToDelete)
-			require.ElementsMatch(t, c.wantPrune, plan.RowsToPrune)
-		})
+	blobCfg := fxtest.Configure()
+	config.Set(blobCfg, blobstore.StorageURLConfig, "http://key:secret@"+mustHost(t, srv.URL)+"/filesbucket")
+	blobstore.DefaultClient = blobstore.NewClient(blobCfg)
+
+	now := time.Now()
+	abandoned := insertFile(t, ctx, 1, now.Add(-36*time.Hour))
+	healthy := insertFile(t, ctx, 2, now.Add(-36*time.Hour))
+	inFlight := insertFile(t, ctx, 3, now.Add(-1*time.Minute))
+	preWindow := insertFile(t, ctx, 4, now.Add(-72*time.Hour))
+
+	putObject(t, srv.URL, healthy.RemotePath(), "payload")
+
+	require.NoError(t, runCleanup(ctx, now))
+
+	require.False(t, fileExists(t, ctx, abandoned.ID), "abandoned upload must be pruned")
+	require.True(t, fileExists(t, ctx, healthy.ID), "row with a live object must survive")
+	require.True(t, fileExists(t, ctx, inFlight.ID), "in-flight upload must survive")
+	require.True(t, fileExists(t, ctx, preWindow.ID), "row older than the window is not probed")
+}
+
+func createFilesTable(t *testing.T, ctx context.Context) {
+	t.Helper()
+	up, err := migrations.ReadFile("202504041033_create_files.up.sql")
+	require.NoError(t, err)
+	require.NoError(t, data.Exec(ctx, string(up)))
+}
+
+func insertFile(t *testing.T, ctx context.Context, id int64, createdAt time.Time) *File {
+	t.Helper()
+	f := &File{
+		ID: id, Kind: "avatar", OwnerType: "drop", OwnerID: 100,
+		OriginalName: "x", ContentType: "text/plain", ContentLength: 1, CreatedAt: createdAt,
 	}
+	require.NoError(t, data.Exec(ctx, `
+		INSERT INTO files (id, kind, owner_id, owner_type, original_name, content_type, content_length, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		f.ID, f.Kind, f.OwnerID, f.OwnerType, f.OriginalName, f.ContentType, f.ContentLength, f.CreatedAt))
+	return f
+}
+
+func fileExists(t *testing.T, ctx context.Context, id int64) bool {
+	t.Helper()
+	var n int
+	require.NoError(t, data.Get(ctx, &n, `SELECT COUNT(*) FROM files WHERE id = $1`, id))
+	return n > 0
+}
+
+func putObject(t *testing.T, baseURL, key, body string) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPut, baseURL+"/filesbucket/"+key, strings.NewReader(body))
+	require.NoError(t, err)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func mustHost(t *testing.T, raw string) string {
+	t.Helper()
+	u, err := url.Parse(raw)
+	require.NoError(t, err)
+	return u.Host
 }
