@@ -22,7 +22,8 @@ const linkAge = 1 * time.Minute
 // into your own routes to expose upload/download endpoints.
 var App = app.Build().
 	Name("files").
-	EmbedMigrations(migrations)
+	EmbedMigrations(migrations).
+	Job(filesCleanup)
 
 var ImageTypes = []string{
 	"image/jpeg",
