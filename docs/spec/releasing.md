@@ -33,7 +33,16 @@ Pre-1.0 conventions (subject to change at 1.0):
   may need to react to, or breaking changes within a package that isn't yet considered
   stable.
 - **Major** (`--major`) — reserved for 1.0 and beyond. Don't use pre-1.0.
-- **Explicit version** (`vX.Y.Z`) — when none of the above fits, name it.
+
+🚨 **Always bump with a flag, never a positional version.** The pinned `platform`
+(`v0.8.2`, see `./platform`) **silently ignores the positional `(name)` argument** under
+the `semver` strategy — `./platform release v0.9.0` does not tag `v0.9.0`, it patch-bumps
+from the latest tag and tags whatever that computes (e.g. `v0.8.8`), then pushes it. The
+help text lists `release (name)`, but this pinned build does not honor it. Use
+`--patch` / `--minor` / `--major` exclusively. To land a specific version, pick the flag
+whose increment reaches it (v0.8.7 → `--minor` → v0.9.0). If no flag increment reaches
+the number you want, stop and reconsider the number rather than reaching for the
+positional form.
 
 When in doubt: patch. Pre-1.0 callers should expect breakage at minor boundaries
 anyway, so the cost of under-bumping is low and the cost of burning a minor on a
@@ -76,9 +85,11 @@ conventional-commit type. `**migrator:**`, not `**fix:**`.
 ```sh
 ./platform release --patch    # most common
 ./platform release --minor
-./platform release v0.9.0     # explicit
 ./platform release --force    # dirty tree (avoid)
 ```
+
+Never pass a positional version (`./platform release v0.9.0`) — the pinned build ignores
+it and patch-bumps instead. See the 🚨 note under [Versioning](#versioning).
 
 `platform release` prompts `create this release? [y/N]` before tagging. To confirm
 non-interactively (automation, or driving it from an agent), set `ALWAYS_YES=1` — a
