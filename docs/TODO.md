@@ -9,13 +9,21 @@ rather than inside them.
 
 ### `app/files` audit — fix-all slate, breaking (targets v0.9.0) — 2026-07-05
 
-**Implemented 2026-07-09** (commits `29eb85a`..HEAD); **release pending** — tag/push
-`v0.9.0` when ready (`./platform release --minor`, CHANGELOG entry already staged under
-Unreleased). Struck #8 (Mode typing — no value). Note #10 kept `WithMode`/`WithOwnerIDFunc`
-as functional options (chakrit: keep the two, they're fine) rather than an Options struct.
+**Implemented 2026-07-09** (commits `29eb85a`..`e243556`). **Nothing pushed** — the whole
+blobserver/store/files arc since v0.8.7 is **9 unpushed commits** on `main` (`5f5d943`..
+`e243556`); push + release wait for chakrit. **Next `/ace`: release is the open action** —
+push, then tag/push `v0.9.0` (`./platform release --minor`; CHANGELOG staged under
+Unreleased). Tree clean, build/vet/tests green, end-to-end smoke passed.
+
+Struck #8 (Mode typing — no value). #10 kept `WithMode`/`WithOwnerIDFunc` as functional
+options (chakrit: keep the two, they're fine) rather than an Options struct. Cleanup worker
+seeds explicitly via `files.ScheduleCleanup(ctx)` (no magic auto-seed — register on mount,
+start explicitly; chakrit's stated fx philosophy). sendfile example carries no seed command
+(worker `jobs`-table ordering trap); documented in its README instead.
+
 Follow-up: the **`prod9-fx` school skill** documents the old files API (`files.NewApp(client)`,
-`WithClient`, `WithLinkAge`) — now removed; propose a skill update after the release lands.
-Original plan below, for the record:
+`WithClient`, `WithLinkAge`) — now removed; propose a skill update (via `ace-school`) after
+the release lands. Original plan below, for the record:
 
 
 Audit of `app/files` (ported from `bluepages/api/files` in `bfd7081`, 2026-03-04, Chakrit
