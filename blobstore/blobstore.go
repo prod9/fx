@@ -21,9 +21,6 @@ func PresignedPutURL(ctx context.Context, key string, options ...Option) (string
 func DeleteObject(ctx context.Context, key string) error {
 	return DefaultClient.DeleteObject(ctx, key)
 }
-func ListObjects(ctx context.Context, prefix string) ([]string, error) {
-	return DefaultClient.ListObjects(ctx, prefix)
-}
-func ForceDeleteObject(ctx context.Context, key string) error {
-	return DefaultClient.ForceDeleteObject(ctx, key)
+func ObjectExists(ctx context.Context, key string) (bool, error) {
+	return DefaultClient.ObjectExists(ctx, key)
 }

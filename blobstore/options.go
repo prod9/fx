@@ -21,12 +21,6 @@ func (o *options) apply(opts ...Option) {
 	}
 }
 
-func (o *options) setDefaults() {
-	if o.age == 0 {
-		o.age = 5 * time.Minute
-	}
-}
-
 type Option func(o *options)
 
 func WithAge(age time.Duration) Option {

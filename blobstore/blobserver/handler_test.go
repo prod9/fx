@@ -59,29 +59,17 @@ func TestHandlerDelete(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, get.Code)
 }
 
-func TestHandlerList(t *testing.T) {
+func TestHandlerHead(t *testing.T) {
 	dir := t.TempDir()
 	h := NewHandler(dir)
-	serve(h, http.MethodPut, "/bucket/a.txt", "a")
-	serve(h, http.MethodPut, "/bucket/sub/b.txt", "bb")
-	serve(h, http.MethodPut, "/other/c.txt", "ccc")
+	serve(h, http.MethodPut, "/bucket/x.txt", "data")
 
-	all := serve(h, http.MethodGet, "/bucket?list-type=2", "")
-	require.Equal(t, http.StatusOK, all.Code)
-	require.Contains(t, all.Body.String(), "<Key>a.txt</Key>")
-	require.Contains(t, all.Body.String(), "<Key>sub/b.txt</Key>")
-	require.NotContains(t, all.Body.String(), "c.txt", "other bucket must not leak")
+	head := serve(h, http.MethodHead, "/bucket/x.txt", "")
+	require.Equal(t, http.StatusOK, head.Code)
+	require.Equal(t, "4", head.Header().Get("Content-Length"))
 
-	pref := serve(h, http.MethodGet, "/bucket?list-type=2&prefix=sub/", "")
-	require.Contains(t, pref.Body.String(), "<Key>sub/b.txt</Key>")
-	require.NotContains(t, pref.Body.String(), "<Key>a.txt</Key>")
-}
-
-func TestHandlerListMissingBucket(t *testing.T) {
-	h := NewHandler(t.TempDir())
-	rec := serve(h, http.MethodGet, "/nope?list-type=2", "")
-	require.Equal(t, http.StatusOK, rec.Code)
-	require.Contains(t, rec.Body.String(), "<KeyCount>0</KeyCount>")
+	missing := serve(h, http.MethodHead, "/bucket/nope.txt", "")
+	require.Equal(t, http.StatusNotFound, missing.Code)
 }
 
 func TestHandlerNeutralizesTraversal(t *testing.T) {

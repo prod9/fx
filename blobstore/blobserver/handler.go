@@ -6,15 +6,15 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"fx.prodigy9.co/fxlog"
 )
 
-// Handler is a minimal, path-style object store over a local directory. It serves
-// the verbs blobstore emits against S3 — GET/PUT/DELETE on /{bucket}/{key} plus a
-// ListObjectsV2 (GET /{bucket}?list-type=2) for reconciliation — persisting objects as
-// plain files under the root. No auth or ACLs.
+// Handler is a minimal, path-style object store over a local directory. It serves the
+// verbs blobstore emits against S3 — GET/PUT/DELETE/HEAD on /{bucket}/{key} — persisting
+// objects as plain files under the root. No auth or ACLs.
 type Handler struct {
 	root string
 }
@@ -24,11 +24,6 @@ func NewHandler(root string) *Handler {
 }
 
 func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	if req.Method == http.MethodGet && req.URL.Query().Has("list-type") {
-		h.list(resp, req)
-		return
-	}
-
 	full, ok := h.resolve(req.URL.Path)
 	if !ok {
 		http.Error(resp, "blobserver: invalid key", http.StatusBadRequest)
@@ -40,6 +35,8 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		h.put(resp, req, full)
 	case http.MethodGet:
 		h.get(resp, req, full)
+	case http.MethodHead:
+		h.head(resp, full)
 	case http.MethodDelete:
 		h.delete(resp, full)
 	default:
@@ -86,6 +83,21 @@ func (h *Handler) get(resp http.ResponseWriter, req *http.Request, full string) 
 	}
 
 	http.ServeContent(resp, req, filepath.Base(full), info.ModTime(), file)
+}
+
+func (h *Handler) head(resp http.ResponseWriter, full string) {
+	info, err := os.Stat(full)
+	if os.IsNotExist(err) {
+		http.Error(resp, "blobserver: not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		h.fail(resp, "head", err)
+		return
+	}
+
+	resp.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
+	resp.Header().Set("Last-Modified", info.ModTime().UTC().Format(http.TimeFormat))
+	resp.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) delete(resp http.ResponseWriter, full string) {

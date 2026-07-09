@@ -57,9 +57,9 @@ func TestPresignedRoundTripAgainstBlobserver(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "delete must remove the file")
 }
 
-// Gates that minio-go's ListObjects can parse blobserver's ListObjectsV2 XML — the
-// reconciliation sweep depends on it.
-func TestListObjectsAgainstBlobserver(t *testing.T) {
+// Gates that minio-go's StatObject existence probe works against blobserver's HEAD — the
+// reconciliation sweep depends on it to tell a landed object from an abandoned upload.
+func TestObjectExistsAgainstBlobserver(t *testing.T) {
 	dir := t.TempDir()
 	srv := httptest.NewServer(blobserver.NewHandler(dir))
 	defer srv.Close()
@@ -70,16 +70,19 @@ func TestListObjectsAgainstBlobserver(t *testing.T) {
 	client := blobstore.NewClient(cfg)
 
 	ctx := context.Background()
-	for _, key := range []string{"a/one.txt", "b/two.txt"} {
-		putURL, err := client.PresignedPutURL(ctx, key)
-		require.NoError(t, err)
-		_, err = http.DefaultClient.Do(must(http.NewRequest(http.MethodPut, putURL, strings.NewReader("x"))))
-		require.NoError(t, err)
-	}
 
-	keys, err := client.ListObjects(ctx, "")
+	exists, err := client.ObjectExists(ctx, "missing/key.txt")
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"a/one.txt", "b/two.txt"}, keys)
+	require.False(t, exists, "a missing object is a clean false, not an error")
+
+	putURL, err := client.PresignedPutURL(ctx, "here/key.txt")
+	require.NoError(t, err)
+	_, err = http.DefaultClient.Do(must(http.NewRequest(http.MethodPut, putURL, strings.NewReader("x"))))
+	require.NoError(t, err)
+
+	exists, err = client.ObjectExists(ctx, "here/key.txt")
+	require.NoError(t, err)
+	require.True(t, exists)
 }
 
 func must[T any](v T, err error) T {

@@ -94,43 +94,26 @@ func (s *Client) DeleteObject(ctx context.Context, key string) error {
 	}
 }
 
-func (s *Client) ForceDeleteObject(ctx context.Context, key string) error {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	opts := minio.RemoveObjectOptions{ForceDelete: true}
-	if client, err := s.tryGetMinio(); err != nil {
-		return err
-	} else if err := client.RemoveObject(ctx, s.bucket, key, opts); err != nil {
-		return fmt.Errorf("blobstore: %w", err)
-	} else {
-		return nil
-	}
-}
-
-// ListObjects returns every object key in the bucket under the given prefix (empty
-// prefix lists all). Used by reconciliation sweeps that diff the store against a
-// database of known objects.
-func (s *Client) ListObjects(ctx context.Context, prefix string) ([]string, error) {
+// ObjectExists reports whether an object exists at key. A missing object is (false, nil);
+// only a transport or access failure yields a non-nil error, so a nil error is an
+// authoritative present/absent answer the reconciliation sweep can act on.
+func (s *Client) ObjectExists(ctx context.Context, key string) (bool, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	client, err := s.tryGetMinio()
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	opts := minio.ListObjectsOptions{Prefix: prefix, Recursive: true}
-	var keys []string
-	for obj := range client.ListObjects(ctx, s.bucket, opts) {
-		if obj.Err != nil {
-			return nil, fmt.Errorf("blobstore: %w", obj.Err)
+	if _, err := client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{}); err != nil {
+		if minio.ToErrorResponse(err).StatusCode == http.StatusNotFound {
+			return false, nil
 		}
-		keys = append(keys, obj.Key)
+		return false, fmt.Errorf("blobstore: %w", err)
 	}
-	return keys, nil
+	return true, nil
 }
 
 // secureFromScheme maps a STORAGE_URL scheme to minio's TLS toggle. Whitelisted:
