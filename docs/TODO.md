@@ -25,9 +25,11 @@ from any context on a fresh DB. Three larger threads are parked for a dedicated 
 
 ### `app/files` audit — fix-all slate, breaking (targets v0.9.0) — 2026-07-05
 
-**Built, then fully re-audited 2026-07-09** (`/ace-audit` over everything since v0.8.7).
-**Nothing pushed.** Unpushed arc on `main` is now `5f5d943..HEAD` (see `git log v0.8.7..HEAD`).
-Tree clean (only `.gitignore`, w/ the ace-connect `.inbox.log`); build/vet/tests green.
+**Built, re-audited twice, then cleanup-reworked 2026-07-09** (`/ace-audit` over everything
+since v0.8.7). **Nothing pushed.** Unpushed arc on `main` is `5f5d943..3b55142` (see `git log
+v0.8.7..HEAD`). Tree clean (only `.gitignore`, w/ the ace-connect `.inbox.log`);
+build/vet/tests green. The audit surface is settled — next `/ace` should NOT re-audit; the
+two open items below are chakrit's decisions, not more review.
 
 Audit fixes landed: `multiFileCtr.Destroy` status mapping + redundant `string(Kind)` drop
 (`d7cf0de`); `app-fragments.md` refreshed to the 0.9 API + exclusive-bucket warning
