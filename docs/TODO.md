@@ -35,6 +35,16 @@ Audit fixes landed: `multiFileCtr.Destroy` status mapping + redundant `string(Ki
 (user memory `feedback_files_mode_bitmask_ok`). Kept `WithMode`/`WithOwnerIDFunc` as
 functional options (not an Options struct).
 
+**Second re-audit 2026-07-09** (a fresh `/ace-audit` pass) caught what the first missed:
+`singleFileCtr.Destroy` still returned **500 on `IsNoRows`** where its multi-file twin
+(fixed in `d7cf0de`) and every read handler map to 404 — the "fixed one of a pair" gap.
+Fixed. Rest of the arc surfaced only nits (not landed): `blobstore.Client.bucket` read
+outside its mutex (`-race` would flag; benign post-warmup); `files.go` `_getOwnerID`
+underscore name; `cleanup.runCleanup` loads the full `files` table + bucket listing into
+memory each sweep (fine at target scale); example/CLI nits (`download_cmd` truncates dest
+on mid-copy failure; `sendfile/drops/ctr.go` magic `500` + `getDropID` sentinel-`0`
+collapsing DB-error/not-found).
+
 **Cleanup-worker seeding is unresolved / in flux.** `files.ScheduleCleanup` still exists in
 code, but the explicit-seed docs + the sendfile seed command were torn out (dropped commit
 `a2f696e`; spec seeding paragraph removed). Foundation landed instead: `ensureJobsTable` now

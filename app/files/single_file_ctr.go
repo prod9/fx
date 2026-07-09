@@ -98,7 +98,11 @@ func (f singleFileCtr) Destroy(resp http.ResponseWriter, req *http.Request) {
 
 	key := f.kind.key(ownerID, 0)
 	if file, err := DestroyUniqueFile(req.Context(), key); err != nil {
-		render.Error(resp, req, 500, err)
+		if data.IsNoRows(err) {
+			render.Error(resp, req, 404, httperrors.ErrNotFound)
+		} else {
+			render.Error(resp, req, 500, err)
+		}
 	} else {
 		render.JSON(resp, req, file)
 	}
