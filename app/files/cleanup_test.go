@@ -26,10 +26,9 @@ func TestPlanCleanup(t *testing.T) {
 			storeKeys: []string{"drop/1/1"},
 		},
 		{
-			name:       "object with no row — orphan deleted",
-			rows:       nil,
-			storeKeys:  []string{"drop/9/9"},
-			wantDelete: []string{"drop/9/9"},
+			name:      "no records — no window, nothing reconciled",
+			rows:      nil,
+			storeKeys: []string{"drop/9/9"},
 		},
 		{
 			name:      "young row, object not yet uploaded — in flight, left alone",
@@ -43,11 +42,20 @@ func TestPlanCleanup(t *testing.T) {
 			wantPrune: []int64{3},
 		},
 		{
-			name: "superseded single-file: old object orphaned, newest kept",
-			rows: []cleanupRow{{ID: 5, RemotePath: "drop/5/2", CreatedAt: old}},
-			// two objects on disk, only the newest row survives
-			storeKeys:  []string{"drop/5/1", "drop/5/2"},
-			wantDelete: []string{"drop/5/1"},
+			name:       "in-window orphan — object above floor with no row, deleted",
+			rows:       []cleanupRow{{ID: 10, RemotePath: "drop/o/10", CreatedAt: old}},
+			storeKeys:  []string{"drop/o/10", "drop/o/11"},
+			wantDelete: []string{"drop/o/11"},
+		},
+		{
+			name:      "superseded orphan below floor — settled by earlier sweeps, skipped",
+			rows:      []cleanupRow{{ID: 5, RemotePath: "drop/s/5", CreatedAt: old}},
+			storeKeys: []string{"drop/s/2", "drop/s/5"},
+		},
+		{
+			name:      "unparseable key — ignored",
+			rows:      []cleanupRow{{ID: 4, RemotePath: "drop/4/4", CreatedAt: old}},
+			storeKeys: []string{"drop/4/4", "weird/key/abc"},
 		},
 	}
 

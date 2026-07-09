@@ -38,10 +38,26 @@ functional options (not an Options struct).
 **Second re-audit 2026-07-09** (a fresh `/ace-audit` pass) caught what the first missed:
 `singleFileCtr.Destroy` still returned **500 on `IsNoRows`** where its multi-file twin
 (fixed in `d7cf0de`) and every read handler map to 404 — the "fixed one of a pair" gap.
-Fixed. Rest of the arc surfaced only nits (not landed): `blobstore.Client.bucket` read
-outside its mutex (`-race` would flag; benign post-warmup); `files.go` `_getOwnerID`
-underscore name; `cleanup.runCleanup` loads the full `files` table + bucket listing into
-memory each sweep (fine at target scale); example/CLI nits (`download_cmd` truncates dest
+Fixed (`e7e1739`). Landed follow-ups:
+
+- **Cleanup memory scoping** — `runCleanup` was an unbounded `SELECT * FROM files` + full
+  bucket listing every hour. Reworked to a record-driven window: `SELECT … WHERE created_at
+  > now-2·deadTimeout`, `idFloor = min(row id)`, and objects with a path-id below the floor
+  are skipped (settled by earlier sweeps — the induction holds because sweeps run regularly).
+  Cadence dropped `1h → deadTimeout/2` (12h). mtime rejected as an ordering key (mutable — a
+  stray touch/rsync/restore breaks it); the immutable path-id drives it instead.
+- **`_getOwnerID` → `defaultOwnerID`** — the underscore had no collision reason (package func
+  vs struct field don't clash in Go); carried over from the original port.
+- **Retracted:** the `blobstore.Client.bucket` "race" — `bucket` is written once under the
+  init write-lock and every read passes through `getMinio`'s RLock first, so it's safely
+  published; `-race` would not flag it.
+
+**Known residual (deferred):** the windowed cleanup still can't reclaim an orphan from a
+*very old* file if the object delete fails partway — the leaked object's id is below the
+floor, so no later sweep reconsiders it. Acceptable for now; revisit with a periodic deep
+reconcile (or a delete-retry ledger) later.
+
+Untouched nits from the same pass (not landed): example/CLI (`download_cmd` truncates dest
 on mid-copy failure; `sendfile/drops/ctr.go` magic `500` + `getDropID` sentinel-`0`
 collapsing DB-error/not-found).
 

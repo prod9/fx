@@ -41,7 +41,7 @@ const (
 	ModeReadWrite = modeRead | modeWrite
 )
 
-func _getOwnerID(req *http.Request) int64 {
+func defaultOwnerID(req *http.Request) int64 {
 	if id_ := chi.URLParam(req, "id"); id_ == "" {
 		return 0
 	} else if id, err := strconv.ParseInt(id_, 10, 64); err != nil {

@@ -30,7 +30,7 @@ func newBaseCtr(kind Kind, options ...Option) baseCtr {
 	b := baseCtr{
 		kind:       kind,
 		mode:       ModeReadOnly,
-		getOwnerID: _getOwnerID,
+		getOwnerID: defaultOwnerID,
 	}
 	for _, opt := range options {
 		opt(&b)
