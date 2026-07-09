@@ -25,17 +25,28 @@ from any context on a fresh DB. Three larger threads are parked for a dedicated 
 
 ### `app/files` audit — fix-all slate, breaking (targets v0.9.0) — 2026-07-05
 
-**Implemented 2026-07-09** (commits `29eb85a`..`e243556`). **Nothing pushed** — the whole
-blobserver/store/files arc since v0.8.7 is **9 unpushed commits** on `main` (`5f5d943`..
-`e243556`); push + release wait for chakrit. **Next `/ace`: release is the open action** —
-push, then tag/push `v0.9.0` (`./platform release --minor`; CHANGELOG staged under
-Unreleased). Tree clean, build/vet/tests green, end-to-end smoke passed.
+**Built, then fully re-audited 2026-07-09** (`/ace-audit` over everything since v0.8.7).
+**Nothing pushed.** Unpushed arc on `main` is now `5f5d943..HEAD` (see `git log v0.8.7..HEAD`).
+Tree clean (only `.gitignore`, w/ the ace-connect `.inbox.log`); build/vet/tests green.
 
-Struck #8 (Mode typing — no value). #10 kept `WithMode`/`WithOwnerIDFunc` as functional
-options (chakrit: keep the two, they're fine) rather than an Options struct. Cleanup worker
-seeds explicitly via `files.ScheduleCleanup(ctx)` (no magic auto-seed — register on mount,
-start explicitly; chakrit's stated fx philosophy). sendfile example carries no seed command
-(worker `jobs`-table ordering trap); documented in its README instead.
+Audit fixes landed: `multiFileCtr.Destroy` status mapping + redundant `string(Kind)` drop
+(`d7cf0de`); `app-fragments.md` refreshed to the 0.9 API + exclusive-bucket warning
+(`e84c988`). Struck the Mode-bitmask finding again — chakrit: it's fine, don't re-flag
+(user memory `feedback_files_mode_bitmask_ok`). Kept `WithMode`/`WithOwnerIDFunc` as
+functional options (not an Options struct).
+
+**Cleanup-worker seeding is unresolved / in flux.** `files.ScheduleCleanup` still exists in
+code, but the explicit-seed docs + the sendfile seed command were torn out (dropped commit
+`a2f696e`; spec seeding paragraph removed). Foundation landed instead: `ensureJobsTable` now
+runs at the jobs-access entry primitives (`62dd987`, `d47a600`) — a job can be scheduled or
+polled from any context on a fresh DB. Ergonomic auto-seeding of `files.cleanup` is
+**deferred to the subsystem refactor** (TODO item above). sendfile: chakrit re-addressed
+drops to `/d/{token}` w/ `OwnerType=token` (`393b704`).
+
+**Next `/ace` — two open decisions for chakrit:** (1) release v0.9.0 now
+(`./platform release --minor`; CHANGELOG staged under Unreleased) or hold for the
+cleanup-seeding ergonomics; (2) scope the subsystem refactor. Push waits on chakrit either
+way.
 
 Follow-up: the **`prod9-fx` school skill** documents the old files API (`files.NewApp(client)`,
 `WithClient`, `WithLinkAge`) — now removed; propose a skill update (via `ace-school`) after
