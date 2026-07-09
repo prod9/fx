@@ -7,6 +7,22 @@ rather than inside them.
 
 ## Open
 
+### Worker/migrator "subsystem" refactor (0.9.1 / 0.10) — 2026-07-09
+
+Deferred from the seeding work. `ensureJobsTable` now runs at the jobs-access entry
+primitives (`62dd987` + the `takeOnePendingJob` guard), so a job can be scheduled or polled
+from any context on a fresh DB. Three larger threads are parked for a dedicated pass:
+
+- **Explicit subsystem mounting** — a `subsys` concept for cross-cutting infra (migrator,
+  worker) that registers its own initialization and is mounted *explicitly*, not magically:
+  `app.Build().UseMigrator().UseWorker()`. Distinct from app fragments/slices.
+- **App-lifecycle hook** — possibly a plain `OnStart` (chakrit not fully convinced yet).
+- **Revisit the jobs-table guard placement** — the entry-point vs interior split (guard
+  `scheduleJob`/`findPendingJobByName`/`takeOnePendingJob`, not the `mark*` helpers) isn't
+  obvious from reading the code, and `worker.Start`'s explicit `ensureJobsTable` is now
+  redundant with the poll-path guard (keep it as subsystem self-init, or drop it). Settle
+  all three together.
+
 ### `app/files` audit — fix-all slate, breaking (targets v0.9.0) — 2026-07-05
 
 **Implemented 2026-07-09** (commits `29eb85a`..`e243556`). **Nothing pushed** — the whole
