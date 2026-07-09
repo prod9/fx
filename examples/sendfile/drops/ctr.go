@@ -35,7 +35,7 @@ func (c Ctr) Mount(cfg *config.Source, router chi.Router) (err error) {
 	router.Post("/drops", c.Create)
 
 	// The files controller resolves the owner (the drop) from the URL token, then
-	// exposes POST/GET/DELETE for that drop's single file under /d/{token}/file.
+	// exposes POST/GET/DELETE for that drop's single file under /d/{token}.
 	// Writes are opt-in (the controller defaults to read-only).
 	fileCtr := files.Controller(fileKind,
 		files.WithMode(files.ModeReadWrite),
