@@ -23,12 +23,24 @@ from any context on a fresh DB. Three larger threads are parked for a dedicated 
   redundant with the poll-path guard (keep it as subsystem self-init, or drop it). Settle
   all three together.
 
-### `app/files` audit — fix-all slate, breaking (targets v0.9.0) — 2026-07-05
+### `app/files` audit — SHIPPED v0.9.0 (2026-07-10)
 
-**Built, audited, then cleanup fully reworked 2026-07-10.** **Nothing pushed.** Unpushed arc
-on `main` is `5f5d943..c0364bf` (see `git log v0.8.7..HEAD`). Tree clean; gofmt/build/vet and
-the full test suite green (DB-gated tests run off the committed `.env` DATABASE_URL). The
-audit surface is settled — next `/ace` should NOT re-audit.
+**Released v0.9.0** — tag `805eefd` on `gh` at commit `4e1b317`, consumable via
+`go get fx.prodigy9.co@v0.9.0`. The whole audit + cleanup-rework arc landed. Cut via
+`./platform release --minor` (CHANGELOG cut to `## v0.9.0` in `4e1b317`). Audit surface is
+settled — next `/ace` should NOT re-audit.
+
+**Release-mechanics slip (fixed).** First `./platform release v0.9.0` mis-tagged **v0.8.8**:
+the pinned `platform` (`v0.8.2`, see `./platform`) silently ignores the positional `(name)`
+arg under the `semver` strategy and patch-bumps instead. v0.8.8 (a previously-yanked number)
+got pushed to `gh`, then deleted (remote + local) — proxy hadn't scraped it, no harm.
+Re-cut with `--minor` → v0.9.0. Guardrail landed in `docs/spec/releasing.md` (commit
+`a3d8ad8`, **unpushed** — awaiting chakrit's push): never pass a positional version, always
+`--patch`/`--minor`/`--major`.
+
+**Historical detail (pre-ship state, kept for the record):** unpushed arc on `main` was
+`5f5d943..c0364bf`; tree clean; gofmt/build/vet + full test suite green (DB-gated tests run
+off the committed `.env` DATABASE_URL).
 
 **2026-07-10 session (`/ace-audit` before v0.9.0):** cut the invented `coda` client task (no
 such client existed). Cut `blobstore.ForceDeleteObject` + `options.setDefaults` (dead). Then
@@ -84,14 +96,15 @@ exported as `files.CleanupJob` and callers seed it directly with
 fresh DB seeds cleanly from any context. Ergonomic auto-seeding remains **deferred to the
 subsystem refactor** (TODO item above).
 
-**Next `/ace` — the v0.9.0 work is complete and committed; two open items for chakrit:**
-(1) push `main` and tag the release (`./platform release --minor`; CHANGELOG staged under
-Unreleased); (2) scope the subsystem refactor (incl. cleanup batch handling, deferred this
-session). Push waits on chakrit.
+**Next `/ace` — v0.9.0 is shipped. Remaining open items:**
+(1) push commit `a3d8ad8` (releasing-spec guardrail) — waits on chakrit's say-so;
+(2) propose the `prod9-fx` school skill update (see follow-up below) — release has landed, so
+now actionable via `ace-school`;
+(3) scope the subsystem refactor (incl. cleanup batch handling, deferred this session).
 
-Follow-up: the **`prod9-fx` school skill** documents the old files API (`files.NewApp(client)`,
-`WithClient`, `WithLinkAge`) — now removed; propose a skill update (via `ace-school`) after
-the release lands. Original plan below, for the record:
+Follow-up (now actionable — release landed): the **`prod9-fx` school skill** documents the
+old files API (`files.NewApp(client)`, `WithClient`, `WithLinkAge`) — all removed in v0.9.0;
+propose a skill update via `ace-school`. Original plan below, for the record:
 
 
 Audit of `app/files` (ported from `bluepages/api/files` in `bfd7081`, 2026-03-04, Chakrit
