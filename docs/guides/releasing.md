@@ -1,7 +1,5 @@
 # Releasing
 
-**Status:** accepted
-
 FX releases are cut with [`platform`](https://platform.prodigy9.co) using the `semver`
 strategy. The repo ships a `./platform` wrapper that pins a known-good `platform`
 version (`go run platform.prodigy9.co@<version>`), so contributors don't need a global

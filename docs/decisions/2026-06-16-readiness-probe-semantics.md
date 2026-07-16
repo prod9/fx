@@ -1,5 +1,12 @@
 # Readiness probe semantics — how FX should think about `/healthz`
 
+- **Date:** 2026-06-16
+- **Status:** accepted
+
+**Decision:** `Home.Healthz` checks dep-reachability only — `db.PingContext` with a
+500ms deadline, 200 when no DB is wired — never self-saturation metrics. See
+[FX's choice](#fxs-choice) for the full ruling.
+
 Captured while triaging `httpserver/controllers/home.go:16` (add a built-in
 `/healthz`). The decision needs k8s probe context to be defensible, so the
 context lives here.

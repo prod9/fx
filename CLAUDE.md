@@ -34,9 +34,11 @@ Minimalism here is a discipline against accidental complexity, not a goal in its
 
 ## Durable artifacts
 
-`docs/{notes,decisions,spec}/` — sorted by permanence (impermanent / point-in-time /
-current). Default to `notes/`. See `docs/README.md` and per-dir READMEs for picker
-details.
+`docs/` — file by the routing gate in `docs/README.md`: a ruling → `decisions/`;
+third-party lookup → `vendor/`; a how-to (using FX or operating the repo) →
+`guides/`; our own design/surface → `spec/`; unsettled exploration → `scratch/`
+(last resort, opened with a "not spec/decision because ___" line). Nothing
+defaults to `scratch/`.
 
 ## ACE / Coding School
 
@@ -137,7 +139,7 @@ Claude/co-author trailers — commits land under the maintainer's identity, plai
 
 ## Releasing
 
-See [`docs/spec/releasing.md`](docs/spec/releasing.md). Short version: clean tree, push
+See [`docs/guides/releasing.md`](docs/guides/releasing.md). Short version: clean tree, push
 commits, update `CHANGELOG.md`, `./platform release --patch` (tags + pushes the tag).
 
 ## Documentation
@@ -145,8 +147,9 @@ commits, update `CHANGELOG.md`, `./platform release --patch` (tags + pushes the 
 - `docs/spec/` — Per-topic specs (philosophy, configuration, app-fragments,
   controllers, middlewares, database, migrations, logging, workers, mailer, errors,
   testing, utilities). Canonical reference.
-- `docs/{decisions,notes}/` — Point-in-time rulings and impermanent notes (see
-  `docs/README.md`).
+- `docs/guides/` — How-tos for using FX or operating the repo (releasing).
+- `docs/{decisions,vendor,scratch}/` — Dated rulings, third-party cribs, unsettled
+  exploration (see `docs/README.md` for the routing gate).
 - `docs/TODO.md` — Running follow-up list.
 - `DOCS.md` — Now a thin index pointing into `docs/spec/`; kept for anyone who
   bookmarked the old path.

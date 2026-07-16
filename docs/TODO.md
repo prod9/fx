@@ -34,7 +34,7 @@ settled — next `/ace` should NOT re-audit.
 the pinned `platform` (`v0.8.2`, see `./platform`) silently ignores the positional `(name)`
 arg under the `semver` strategy and patch-bumps instead. v0.8.8 (a previously-yanked number)
 got pushed to `gh`, then deleted (remote + local) — proxy hadn't scraped it, no harm.
-Re-cut with `--minor` → v0.9.0. Guardrail landed in `docs/spec/releasing.md` (commit
+Re-cut with `--minor` → v0.9.0. Guardrail landed in `docs/guides/releasing.md` (commit
 `a3d8ad8`, **unpushed** — awaiting chakrit's push): never pass a positional version, always
 `--patch`/`--minor`/`--major`.
 
@@ -208,7 +208,7 @@ pre-check request end-to-end over the bridge.
 
 Distilled how FX was actually built from the pre-AI git history (174 commits through
 `bde86f6`) and checked it against the eight stated principles in `spec/philosophy.md`.
-Full write-up: `notes/2026-06-21-revealed-philosophy-from-git-history.md`. Result: all
+Full write-up: `scratch/2026-06-21-revealed-philosophy-from-git-history.md`. Result: all
 eight are authentic (several written into doc comments predating CLAUDE.md), plus six
 unstated gaps grounded only in the spine. (Authorship caveat: subtree/squash imports
 attribute every pre-AI commit to chakrit; some leaf code is from others — don't infer
@@ -247,7 +247,7 @@ commitment.
 2. ~~**`Home` readiness probe (`/healthz`).**~~ Shipped 2026-06-16. Added
    `data.LookupFromContext` (stdlib-style comma-ok sibling of `FromContext`)
    and `Home.Healthz` at `/healthz` with the 500ms dep-reachability behavior
-   from `notes/2026-06-16-readiness-probe-semantics.md`.
+   from `decisions/2026-06-16-readiness-probe-semantics.md`.
 
 3. **Context-threading rethink** (folds in `app/settings/provider.go:57` and
    `app/settings/settings.go:42`). Both are symptoms of a larger design gap:
@@ -257,7 +257,7 @@ commitment.
    per call because there's no clear answer to "what context do I belong to
    when there's no caller ctx?" And the settings cache shape (`Get(ctx, key)`
    TODO) can't be decided independently of where the long-lived Provider
-   state lives. Output: a written design proposal in `docs/notes/` or a
+   state lives. Output: a written design proposal in `docs/spec/` or a
    decision in `docs/decisions/`, not code. When the cache is implemented as
    part of the redesign, use the existing `cache` package (extend if needed)
    rather than inventing settings-local cache state.

@@ -1,3 +1,6 @@
+<!-- not spec/decision because: historical study validating the stated philosophy; no
+     new ruling or design claim of its own -->
+
 # FX's revealed philosophy — what the pre-AI git history says
 
 A study of how the maintainer actually wrote FX before any AI assistance, distilled
