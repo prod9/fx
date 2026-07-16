@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.9.1
+
+* **fxtest:** New `FXTEST_SKIP_DBTESTS` flag — when truthy, any test calling
+  `ConnectTestDatabase` skips instead of failing, so hermetic environments with no
+  database (e.g. the in-build publish test gate) pass `go test ./...` cleanly. The
+  repo's committed `.env` now sets it by default; re-enable DB tests locally with
+  `FXTEST_SKIP_DBTESTS=0` in `.env.local` or the shell env.
+* **fxtest:** *Breaking.* Renamed `TestDisableCleanup` to `CleanupConfig`, matching the
+  `*Config` naming every other config var uses (the `FXTEST_CLEANUP` env name is
+  unchanged).
+
 ## v0.9.0
 
 The `files` changes below are breaking.
