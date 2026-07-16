@@ -1,8 +1,9 @@
 # PRODIGY9 FRAMEWORK
 
-A minimalistic, modular Go API framework. Bundles well-integrated tools for building
-APIs — config, routing, DB + migrations, jobs, logging, mail, caching, secrets — while
-letting you swap pieces in/out.
+A minimalistic, modular Go API framework. FX bundles well-integrated tools for building
+APIs — config, routing, database + migrations, background jobs, logging, mail, caching,
+secrets, blob storage — while keeping every piece optional and the standard primitives
+(chi, sqlx, cobra, `net/http`) within reach.
 
 Module: `fx.prodigy9.co` | Go 1.24
 
@@ -12,18 +13,76 @@ Module: `fx.prodigy9.co` | Go 1.24
 go get fx.prodigy9.co
 ```
 
-Then import the packages you need:
+Import only the packages you need — everything is optional and works standalone.
+
+## Quick start
+
+A minimal FX application is an `app.Build()` chain that mounts controllers and starts
+the bundled CLI (`serve`, `print-config`, `data migrate`, …):
 
 ```go
+package main
+
 import (
-  "fx.prodigy9.co/app"
-  "fx.prodigy9.co/data"
-  "fx.prodigy9.co/httpserver/controllers"
+	"log"
+
+	"fx.prodigy9.co/app"
+	"fx.prodigy9.co/httpserver/controllers"
 )
+
+func main() {
+	err := app.Build().
+		Description("My API").
+		AddDefaults().
+		Controllers(controllers.Home{}).
+		Start()
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
 ```
 
-See [`docs/spec/`](docs/spec/) for the per-topic API reference and
-[`examples/`](examples) for working applications (`todoapi`, `envfiles`, `workers`).
+```sh
+go run . serve           # start the HTTP server
+go run . print-config    # inspect resolved configuration
+go run . data migrate    # apply SQL migrations
+```
+
+Larger apps compose from **fragments** — self-contained bundles of controllers,
+middlewares, and commands mounted onto the root app:
+
+```go
+app.Build().
+	AddDefaults().
+	Mount(auth.App).
+	Mount(todos.App).
+	Start()
+```
+
+See [`examples/todoapi`](examples/todoapi) for a complete application (auth, todos,
+migrations), plus [`examples/`](examples) for smaller focused ones (`envfiles`,
+`workers`, `migrations`).
+
+## What's in the box
+
+| Package                 | Purpose                                              |
+|-------------------------|------------------------------------------------------|
+| `app`                   | Application builder, fragment composition, lifecycle |
+| `config`                | Type-safe env var config with `.env` support         |
+| `httpserver`            | HTTP server, chi controllers, middlewares, rendering |
+| `data`                  | PostgreSQL/sqlx layer, transactions, migrations      |
+| `worker`                | PostgreSQL-backed background jobs                    |
+| `cmd`                   | cobra CLI commands (`serve`, data tools, store)      |
+| `fxlog`                 | Structured logging (zerolog or slog)                 |
+| `blobstore`, `app/files`| S3-compatible object storage and file management     |
+| `cache`                 | In-memory / Redis caching                            |
+| `mailer`                | Postmark email                                       |
+| `secret`, `passwords`   | AES-256-GCM encryption, bcrypt hashing               |
+| `validate`, `errutil`   | Input validation, error decoration                   |
+| `fxtest`                | Test config and isolated test databases              |
+
+The full per-package reference lives in [`docs/spec/`](docs/spec/).
 
 ## Philosophy
 
@@ -51,6 +110,17 @@ The throughline that guides what FX is and isn't. Full version in
    everything.
 
 Minimalism here is a discipline against accidental complexity, not a goal in itself.
+
+## Documentation
+
+Everything durable lives under [`docs/`](docs/), routed by the gate in
+[`docs/README.md`](docs/README.md):
+
+- [`docs/spec/`](docs/spec/) — per-topic reference: configuration, app fragments,
+  controllers, middlewares, database, migrations, logging, workers, mailer, errors,
+  testing, utilities.
+- [`docs/guides/`](docs/guides/) — how-tos, e.g. [releasing](docs/guides/releasing.md).
+- [`docs/decisions/`](docs/decisions/) — dated design rulings and their rationale.
 
 ## Hacking on FX from a downstream app (git subtree)
 
