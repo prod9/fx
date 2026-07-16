@@ -1,0 +1,8 @@
+# lowfat project config — fx (Go API framework)
+# Format: https://github.com/zdk/lowfat/blob/main/docs/CONFIG.md
+
+# Intensity: lite (~60 lines) · full (~30) · ultra (~10).
+level=full
+
+# All bundled + synced pantry filters stay active (go, golangci-lint, gh, ...).
+# `disable` (blacklist) / `filters` (whitelist) available if one misbehaves.
