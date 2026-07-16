@@ -1,5 +1,6 @@
 .claude
 .claude-*.md
+.env.local
 .idea
 
 # blobserver local disk store (BLOBSERVER_DIR default)

@@ -17,8 +17,16 @@ import (
 // creating new ones.
 var TestDisableCleanup = config.Str("FXTEST_CLEANUP")
 
+// FXTEST_SKIP_DBTESTS can be set to `true` (or `1`) to skip every test that requires a
+// database, for hermetic environments with no database such as in-build test gates.
+var SkipDBTestsConfig = config.Bool("FXTEST_SKIP_DBTESTS")
+
 func ConnectTestDatabase(t *testing.T) context.Context {
 	cfg := Configure()
+	if config.Get(cfg, SkipDBTestsConfig) {
+		t.Skip("fxtest: FXTEST_SKIP_DBTESTS is set")
+		return nil
+	}
 	cleanupMode := strings.ToUpper(config.Get(cfg, TestDisableCleanup))
 
 	dbURL := config.Get(cfg, data.DatabaseURLConfig)
