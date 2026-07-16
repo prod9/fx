@@ -15,7 +15,7 @@ import (
 //
 // Afterwards, it can be set to `force` to force dropping of the test databases before
 // creating new ones.
-var TestDisableCleanup = config.Str("FXTEST_CLEANUP")
+var CleanupConfig = config.Str("FXTEST_CLEANUP")
 
 // FXTEST_SKIP_DBTESTS can be set to `true` (or `1`) to skip every test that requires a
 // database, for hermetic environments with no database such as in-build test gates.
@@ -27,7 +27,7 @@ func ConnectTestDatabase(t *testing.T) context.Context {
 		t.Skip("fxtest: FXTEST_SKIP_DBTESTS is set")
 		return nil
 	}
-	cleanupMode := strings.ToUpper(config.Get(cfg, TestDisableCleanup))
+	cleanupMode := strings.ToUpper(config.Get(cfg, CleanupConfig))
 
 	dbURL := config.Get(cfg, data.DatabaseURLConfig)
 	if dbURL == "" {
