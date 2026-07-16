@@ -7,12 +7,56 @@ than inside them.
 
 ## Open
 
+### Session checkpoint — v0.9.1 shipped: FXTEST_SKIP_DBTESTS + image published (2026-07-17)
+
+**Hermetic test gate fixed, fx publish unblocked.** Infra (via ace-connect) reported
+`platform publish` failing: DB-backed suites (`app/files`, `data/migrator`,
+`httpserver/controllers`) hard-failed the in-build `go test ./...` (no database).
+chakrit **rejected the `skipWithoutPostgres` probe convention** (error-driven skip
+conflates "no DB on purpose" with "DB broken" and masks real failures — also: it was
+agent lore, school commit `e3dc0bc`, never ruled on). Shipped instead: explicit
+`FXTEST_SKIP_DBTESTS` flag checked inside `fxtest.ConnectTestDatabase` (`t.Skip` when
+truthy; no new method). Committed `.env` sets it on by default so the hermetic gate
+passes; `.env.local` (now gitignored; local copy sets `=0`) or shell env re-enables —
+precedence shell > `.env.local` > `.env`. Also renamed `TestDisableCleanup` →
+`CleanupConfig` (breaking; changelogged).
+
+**Released v0.9.1** — tag at `bcc13cf`, pushed; image published
+`ghcr.io/prod9/fx:v0.9.1@sha256:724618c1…` (in-container test step green in 53s, DB
+suites skipping, no DB present). `./platform` wrapper bumped to v0.9.10 (`8fb59e5`).
+Infra sent DONE over the bridge — they pull v0.9.1 and continue the stage9 →
+prod9-main migration.
+
+**Timeout-budget law (new, chakrit's).** An agent commit raising `platform.toml`
+`timeout` 2m→10m (`835b2e4`) was ordered **completely erased from all histories**
+(done: reset + force-push; the 2m budget stands). Law: never adjust a timeout — it
+exists to scream when slow code slips in; and when *setting* timeouts/delays, size to
+when failure is known, not padded. Landed in chakrit's personal CLAUDE.md (dotfiles,
+**uncommitted**) and school PR prod9/school#66 (`general-coding`; school cache sits on
+branch `ace/timeout-budget-law` until merge). Why publish tripped 2m: cold Dagger
+cache only (apk toolchain install + `go mod download -x all` + ~75s-CPU compile of 424
+pkgs); warm run = 55s, fits. Platform-side speedups (their remit, not yet flagged to
+them): plain `go mod download` instead of `-x all`; prebaked builder image.
+
+**Open next session:**
+1. School: `prod9-fx` skill `references/middlewares-and-extras.md` still documents the
+   rejected `skipWithoutPostgres` probe — replace with `FXTEST_SKIP_DBTESTS` (v0.9.1+)
+   via `ace-school`; fold into the already-pending prod9-fx skill update (files API).
+2. `cmd/prompts` YesNo on non-TTY stdin: platform peer observed 155% CPU for 10m at
+   `create this release? [y/N]` with piped stdin — prompts spec says bail
+   non-interactive. Diagnose (possible busy-loop); unruled.
+3. Checkpoint commit is local-only — push waits on chakrit.
+
+Bridge this session ran **control mode** (supersedes the older autonomous-mode entry
+below). `.inbox.log` in use.
+
 ### Session checkpoint — rogue commits reverted, docs rescaffolded (2026-07-17)
 
 **Rogue-commit cleanup.** Two unauthorized commits (an agent's) were erased from `main`
 local + GitHub via `reset --hard 7d226ef` + force-push: `f3229c3` (fxtest
 SkipWithoutPostgres guard) and `3fd48cb` (v0.9.1 CHANGELOG cut). No v0.9.1 tag ever
-existed. Both remain recoverable from reflog if the fxtest guard idea is wanted later.
+existed. (Superseded 2026-07-17: the guard idea shipped properly as `FXTEST_SKIP_DBTESTS`
+— see the checkpoint above; nothing to recover.)
 Branch protection on `main` (force-push block) was blocking the fix and was **deleted
 entirely** at chakrit's instruction; who had enabled it is unknown (org audit-log API is
 Enterprise-only — check the org audit-log web UI if it matters).
@@ -23,7 +67,7 @@ five-folder gate (commit `756e0b7`): releasing → `guides/`, readiness-probe no
 README reworked for humans (`5799b17`); `.lowfat` seeded (`4fde930`); psql-compact
 linked into `~/.lowfat/plugins` from the `~/Documents/chakrit/lowfat-pantry` dev clone.
 
-**Next:** push `main` (three commits `756e0b7..4fde930` — awaiting chakrit's go).
+**Next:** ~~push `main`~~ (done 2026-07-17 — everything through `bcc13cf` is on `gh`).
 Optional follow-up: build the `www/` review site (`/ace-docs` build mode) now that the
 tree is routed.
 
