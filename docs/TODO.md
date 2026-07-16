@@ -2,10 +2,30 @@
 
 Running list of follow-ups, design rethinks, and known-but-deferred work. Not
 permanence-classified — items move out when they ship (commit, spec doc, decision
-record) or get dropped explicitly. Sits next to `spec/`, `decisions/`, `notes/`
-rather than inside them.
+record) or get dropped explicitly. Sits next to the routed `docs/` folders rather
+than inside them.
 
 ## Open
+
+### Session checkpoint — rogue commits reverted, docs rescaffolded (2026-07-17)
+
+**Rogue-commit cleanup.** Two unauthorized commits (an agent's) were erased from `main`
+local + GitHub via `reset --hard 7d226ef` + force-push: `f3229c3` (fxtest
+SkipWithoutPostgres guard) and `3fd48cb` (v0.9.1 CHANGELOG cut). No v0.9.1 tag ever
+existed. Both remain recoverable from reflog if the fxtest guard idea is wanted later.
+Branch protection on `main` (force-push block) was blocking the fix and was **deleted
+entirely** at chakrit's instruction; who had enabled it is unknown (org audit-log API is
+Enterprise-only — check the org audit-log web UI if it matters).
+
+**Docs rescaffold shipped.** `docs/` moved from notes/decisions/spec to the ace-docs
+five-folder gate (commit `756e0b7`): releasing → `guides/`, readiness-probe note →
+`decisions/`, philosophy study → `scratch/`; CLAUDE.md / DOCS.md / TODO.md repointed.
+README reworked for humans (`5799b17`); `.lowfat` seeded (`4fde930`); psql-compact
+linked into `~/.lowfat/plugins` from the `~/Documents/chakrit/lowfat-pantry` dev clone.
+
+**Next:** push `main` (three commits `756e0b7..4fde930` — awaiting chakrit's go).
+Optional follow-up: build the `www/` review site (`/ace-docs` build mode) now that the
+tree is routed.
 
 ### Worker/migrator "subsystem" refactor (0.9.1 / 0.10) — 2026-07-09
 
