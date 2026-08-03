@@ -15,12 +15,12 @@ import (
 )
 
 // TestMountServesSettings drives the settings endpoints end to end through the exported
-// Mount entrypoint on a bare database: the guard self-inits, an empty list is served, an
-// upsert creates a row, and a follow-up list reflects it. It also stands in for the
-// mount-auth contract — routes exist only where the consumer calls Mount, never from the
-// fragment itself.
+// MountRoutes entrypoint: an empty list is served, an upsert creates a row, and a follow-up
+// list reflects it. It also stands in for the mount-auth contract — routes exist only where
+// the consumer calls MountRoutes, never from the fragment itself.
 func TestMountServesSettings(t *testing.T) {
 	ctx := fxtest.ConnectTestDatabase(t)
+	createSettingsTable(t, ctx)
 	cfg := config.FromContext(ctx)
 	db := data.FromContext(ctx)
 
@@ -37,7 +37,7 @@ func TestMountServesSettings(t *testing.T) {
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
-	require.Empty(t, listSettings(t, srv.URL), "a bare database must serve an empty list")
+	require.Empty(t, listSettings(t, srv.URL), "a fresh table must serve an empty list")
 
 	created := postSetting(t, srv.URL, "theme", "dark")
 	require.Equal(t, "theme", created.Key)

@@ -18,9 +18,6 @@ type Upsert struct {
 var _ controllers.Action = (*Upsert)(nil)
 
 func (a *Upsert) Execute(ctx context.Context, out any) error {
-	if err := ensureSettingsTable(ctx); err != nil {
-		return err
-	}
 	return data.Get(ctx, out, `
 		INSERT INTO settings (key, value)
 		VALUES ($1, $2)
