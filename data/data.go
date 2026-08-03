@@ -43,7 +43,7 @@ func configureDB(cfg *config.Source, db *sqlx.DB) {
 	maxIdle, maxOpen :=
 		config.Get(cfg, DatabaseMaxIdleConfig),
 		config.Get(cfg, DatabaseMaxOpenConfig)
-	if maxIdle > 0 {
+	if maxIdle >= 0 {
 		db.SetMaxIdleConns(maxIdle)
 	}
 	if maxOpen > 0 {
