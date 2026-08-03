@@ -25,7 +25,7 @@ var ErrNoDatabase = errors.New("pubsub: no database in context")
 // The subscription owns its connection alone, so its whole lifetime is one context; a
 // subscription MUST be cancelled (defer the returned cancel), else the loop goroutine and
 // its held Postgres connection leak for the life of the process.
-func SubscribeRaw(ctx context.Context, name string) (<-chan []byte, context.CancelFunc, error) {
+func SubscribeRaw(ctx context.Context, name string) (<-chan string, context.CancelFunc, error) {
 	if err := validateName(name); err != nil {
 		return nil, nil, err
 	}
@@ -36,7 +36,7 @@ func SubscribeRaw(ctx context.Context, name string) (<-chan []byte, context.Canc
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	out := make(chan []byte)
+	out := make(chan string)
 	started := make(chan error, 1)
 
 	go listen(ctx, db, name, out, started)
@@ -75,7 +75,7 @@ func Subscribe[T any](ctx context.Context, ch Channel[T]) (<-chan T, context.Can
 // listen drives one subscription across the whole lifetime of ctx. The first connect and
 // LISTEN report their outcome once over started; after that, a dropped connection is
 // reconnected silently and every other exit path is a clean shutdown.
-func listen(ctx context.Context, db *sqlx.DB, name string, out chan<- []byte, started chan<- error) {
+func listen(ctx context.Context, db *sqlx.DB, name string, out chan<- string, started chan<- error) {
 	defer close(out)
 
 	first := true
@@ -113,7 +113,7 @@ func listen(ctx context.Context, db *sqlx.DB, name string, out chan<- []byte, st
 // listenOnce holds one pooled connection for a single LISTEN session. The pgx handle is
 // valid only inside conn.Raw, so LISTEN, the notification loop, and UNLISTEN all run in
 // the one callback. onListen fires once LISTEN succeeds, before the loop blocks.
-func listenOnce(ctx context.Context, db *sqlx.DB, name string, out chan<- []byte, onListen func()) error {
+func listenOnce(ctx context.Context, db *sqlx.DB, name string, out chan<- string, onListen func()) error {
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err
@@ -149,14 +149,14 @@ func listenOnce(ctx context.Context, db *sqlx.DB, name string, out chan<- []byte
 // consumer that can't keep up misses messages, the same at-most-once contract Postgres
 // has when no one listens, and covered by the app's re-scan (§5). It never blocks the
 // loop, so one stalled consumer can never back up the shared server-side notify queue.
-func pump(ctx context.Context, conn *pgx.Conn, out chan<- []byte) error {
+func pump(ctx context.Context, conn *pgx.Conn, out chan<- string) error {
 	for {
 		notif, err := conn.WaitForNotification(ctx)
 		if err != nil {
 			return err
 		}
 		select {
-		case out <- []byte(notif.Payload):
+		case out <- notif.Payload:
 		default:
 		}
 	}
@@ -165,12 +165,12 @@ func pump(ctx context.Context, conn *pgx.Conn, out chan<- []byte) error {
 // decode unmarshals each raw payload into T, logging and skipping any that fail. The send
 // to out blocks until the consumer reads or ctx is cancelled; upstream, pump has already
 // dropped anything the stalled consumer couldn't keep up with.
-func decode[T any](ctx context.Context, raw <-chan []byte, out chan<- T) {
+func decode[T any](ctx context.Context, raw <-chan string, out chan<- T) {
 	defer close(out)
 
 	for payload := range raw {
 		var value T
-		if err := json.Unmarshal(payload, &value); err != nil {
+		if err := json.Unmarshal([]byte(payload), &value); err != nil {
 			fxlog.Log("pubsub: dropping undecodable payload", fxlog.Any("err", err))
 			continue
 		}

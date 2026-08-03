@@ -48,12 +48,12 @@ func TestNewChannelPanicsOnInvalidName(t *testing.T) {
 func TestPublishRawRejectsOversizePayload(t *testing.T) {
 	// The size guard must reject before any DB access, so a background context with no
 	// data connection still surfaces the error rather than panicking on a missing DB.
-	err := PublishRaw(context.Background(), "valid_name", make([]byte, maxPayloadBytes))
+	err := PublishRaw(context.Background(), "valid_name", strings.Repeat("x", maxPayloadBytes))
 	require.ErrorIs(t, err, ErrPayloadTooLarge)
 }
 
 func TestPublishRawRejectsInvalidName(t *testing.T) {
-	err := PublishRaw(context.Background(), "bad name", []byte("x"))
+	err := PublishRaw(context.Background(), "bad name", "x")
 	require.ErrorIs(t, err, ErrInvalidName)
 }
 
@@ -64,6 +64,6 @@ func TestSubscribeRawRequiresDatabase(t *testing.T) {
 
 // guard against accidental removal of the exclusive-limit boundary.
 func TestPayloadLimitIsExclusive(t *testing.T) {
-	require.True(t, errors.Is(PublishRaw(context.Background(), "n", make([]byte, maxPayloadBytes)), ErrPayloadTooLarge),
+	require.True(t, errors.Is(PublishRaw(context.Background(), "n", strings.Repeat("x", maxPayloadBytes)), ErrPayloadTooLarge),
 		"a payload of exactly maxPayloadBytes must be rejected")
 }

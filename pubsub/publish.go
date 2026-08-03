@@ -14,7 +14,7 @@ import (
 // own it runs a BEGIN/pg_notify/COMMIT of its own. Prefer publishing out-of-band, after
 // the business commit — coupling a NOTIFY into the business tx lets a full notify queue
 // roll it back.
-func PublishRaw(ctx context.Context, name string, payload []byte) error {
+func PublishRaw(ctx context.Context, name string, payload string) error {
 	if err := validateName(name); err != nil {
 		return err
 	}
@@ -22,7 +22,7 @@ func PublishRaw(ctx context.Context, name string, payload []byte) error {
 		return fmt.Errorf("%w: %d bytes", ErrPayloadTooLarge, len(payload))
 	}
 
-	return data.Exec(ctx, `SELECT pg_notify($1, $2)`, name, string(payload))
+	return data.Exec(ctx, `SELECT pg_notify($1, $2)`, name, payload)
 }
 
 // Publish marshals payload as JSON of T and sends it on ch. The JSON boundary is the one
@@ -33,5 +33,5 @@ func Publish[T any](ctx context.Context, ch Channel[T], payload T) error {
 	if err != nil {
 		return err
 	}
-	return PublishRaw(ctx, ch.name, data)
+	return PublishRaw(ctx, ch.name, string(data))
 }

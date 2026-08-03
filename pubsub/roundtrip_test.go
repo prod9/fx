@@ -20,8 +20,8 @@ func TestPublishSubscribeRawRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	defer cancel()
 
-	got := recvRaw(t, ctx, "raw_roundtrip", []byte("hello"), ch)
-	require.Equal(t, []byte("hello"), got)
+	got := recvRaw(t, ctx, "raw_roundtrip", "hello", ch)
+	require.Equal(t, "hello", got)
 }
 
 func TestPublishSubscribeTypedRoundTrip(t *testing.T) {
@@ -46,7 +46,7 @@ func TestDecodeFailureKeepsStreamLive(t *testing.T) {
 	require.NoError(t, err)
 	defer cancel()
 
-	require.NoError(t, PublishRaw(ctx, "decode_skip", []byte("not-json")))
+	require.NoError(t, PublishRaw(ctx, "decode_skip", "not-json"))
 
 	got := recvTyped(t, ctx, channel, ball{Count: 42}, ch)
 	require.Equal(t, ball{Count: 42}, got)
@@ -73,10 +73,10 @@ func TestTypedSubscribeCancelClosesChannel(t *testing.T) {
 // recvRaw publishes on a tick until one payload is delivered, absorbing the best-effort
 // non-blocking drop: a publish that lands before the receiver is parked on the channel is
 // simply dropped, and the next tick re-sends. Fails the test if nothing arrives in time.
-func recvRaw(t *testing.T, ctx context.Context, name string, payload []byte, ch <-chan []byte) []byte {
+func recvRaw(t *testing.T, ctx context.Context, name string, payload string, ch <-chan string) string {
 	t.Helper()
 
-	received := make(chan []byte, 1)
+	received := make(chan string, 1)
 	go func() {
 		select {
 		case p := <-ch:
@@ -96,7 +96,7 @@ func recvRaw(t *testing.T, ctx context.Context, name string, payload []byte, ch 
 		case <-tick.C:
 		case <-deadline:
 			t.Fatal("pubsub: no delivery within deadline")
-			return nil
+			return ""
 		}
 	}
 }

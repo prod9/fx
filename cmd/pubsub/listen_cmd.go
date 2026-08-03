@@ -38,11 +38,11 @@ func runListenCmd(cmd *cobra.Command, args []string) {
 	}
 }
 
-func printNotifications(name string, ch <-chan []byte) {
+func printNotifications(name string, ch <-chan string) {
 	for payload := range ch {
 		fxlog.Log("notification",
 			fxlog.String("channel", name),
-			fxlog.String("payload", string(payload)),
+			fxlog.String("payload", payload),
 		)
 	}
 }

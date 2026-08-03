@@ -150,12 +150,14 @@ distinct.
 
 ```go
 func Publish[T any](ctx context.Context, ch Channel[T], payload T) error
-func PublishRaw(ctx context.Context, name string, payload []byte) error
+func PublishRaw(ctx context.Context, name string, payload string) error
 ```
 
 `Publish` marshals `payload` to JSON and delegates to `PublishRaw`, the untyped floor that
-takes a channel name and pre-marshaled bytes — for the CLI and any caller holding a name
-and bytes rather than a typed channel. Both enforce the same size limit and tx behavior.
+takes a channel name and a pre-marshaled payload — for the CLI and any caller holding a
+name and a string rather than a typed channel. The floor is `string`, not `[]byte`,
+because a Postgres `NOTIFY` payload is a `text` column; a caller with binary data encodes
+it (base64, hex) into text itself. Both enforce the same size limit and tx behavior.
 `ctx` leads, per Go convention. Publish runs through the existing `data.Exec` path on the
 pooled connection, so it rides whatever tx context it is called in: inside `data.Run(...)`
 it joins the parent tx and fires on that commit; called on its own it runs a
@@ -169,11 +171,11 @@ migration.
 
 ```go
 func Subscribe[T any](ctx context.Context, ch Channel[T]) (<-chan T, context.CancelFunc, error)
-func SubscribeRaw(ctx context.Context, name string) (<-chan []byte, context.CancelFunc, error)
+func SubscribeRaw(ctx context.Context, name string) (<-chan string, context.CancelFunc, error)
 ```
 
 `SubscribeRaw` is the untyped floor: it opens the dedicated connection, issues `LISTEN`,
-and streams bare payload bytes — for the CLI and name-based callers. `Subscribe` wraps it,
+and streams the payload text — for the CLI and name-based callers. `Subscribe` wraps it,
 decoding each payload into `T` and feeding the returned typed channel. **The initial connect and `LISTEN` are synchronous: if either fails — including a
 connection-cap block or Postgres "too many clients" (§4) — `Subscribe` returns the error
 rather than a live channel**, so the failure surfaces loud at the callsite instead of a
