@@ -40,6 +40,16 @@ third-party lookup → `vendor/`; a how-to (using FX or operating the repo) →
 (last resort, opened with a "not spec/decision because ___" line). Nothing
 defaults to `scratch/`.
 
+## Task tracker
+
+Open work is tracked in the **FX** collection on Outline (via the connected `outline`
+MCP server), not in the repo. Find it with the MCP's collection listing; the collection
+home states the conventions, a Roadmap doc holds the priority-banded index, and a task
+template gives the per-item shape. The boundary holds both ways: Outline tracks *open
+work*, `docs/` holds *what's true* — when an item ships a spec/decision, the record lands
+in `docs/` and the Outline item is closed. (`docs/TODO.md` is the legacy backlog, pending
+migration into Outline.)
+
 ## ACE / Coding School
 
 This project's AI coding environment is managed by [ACE](https://github.com/prod9/ace).
