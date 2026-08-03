@@ -100,8 +100,8 @@ Notable ones are:
 ### `settings.App`
 
 Key-value settings stored in PostgreSQL with a config provider and an optional REST API.
-Mount the fragment for the data layer; the table self-initializes on first access (and via
-the embedded migration on deploy), so no consumer migration is required:
+Mount the fragment for the data layer; it owns the settings table through an embedded
+migration, applied by `data migrate` like any other fragment:
 
 ```go
 app.Build().
