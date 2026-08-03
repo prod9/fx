@@ -24,3 +24,4 @@ ace.local.toml
 # end ACE
 
 .inbox.log
+.ace/
