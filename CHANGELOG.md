@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.9.2
+
+* **app/settings:** New settings fragment — a key/value store table owned by an embedded
+  migration (applied under `data migrate`, like the `audit` and `files` fragments).
+  `settings.App` is a plain fragment var; `List`/`Get`/`Set`/`Delete` are the Go API, with
+  `Get(ctx, key, fallback)` treating absence as the fallback rather than an error. A
+  `config.Provider` (`settings.NewProvider`) backs config lookups with the same table.
+  The REST controller is mounted deliberately, not auto-mounted: call `settings.MountRoutes`
+  inside a route group you own and guard (`GET /settings`, `POST /settings/{slug}` upsert,
+  `DELETE /settings/{slug}`), so settings data is never exposed by mounting `App` alone.
+  Writes are upserts — the first write to a key creates its row.
+
 ## v0.9.1
 
 * **fxtest:** New `FXTEST_SKIP_DBTESTS` flag — when truthy, any test calling
