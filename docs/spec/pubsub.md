@@ -205,10 +205,10 @@ fails, rather than relying on `r.Context()` to tear the subscription down.
 ### 4. One connection per subscription — Postgres does the fan-out
 
 Each `Subscribe` pulls one dedicated connection from the pool `data.Connect` already
-produced (`db.Conn(ctx)` plus the pgx-stdlib hijack to reach `*pgx.Conn` for
-`WaitForNotification`) and holds it for the subscription's life — no `data.Dial` / new
-connection API. Reusing the one pool keeps connection accounting honest: subscriptions
-draw against the same `DATABASE_MAX_OPEN` budget as every other query, rather than hiding
+produced (`db.Conn(ctx)`) and holds it for the subscription's life, listening on it with
+`WaitForNotification` — no `data.Dial` / new connection API. Reusing the one pool keeps
+connection accounting honest: subscriptions draw against the same `DATABASE_MAX_OPEN`
+budget as every other query, rather than hiding
 in a shadow pool that makes the configured limit lie. The DB comes from the `data`
 context, so there is no process-wide service to register: websocket handlers already have
 it on the request context, and a stand-alone command builds a data context the way other
