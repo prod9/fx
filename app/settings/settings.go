@@ -59,15 +59,16 @@ func Get(ctx context.Context, key string) (*Settings, error) {
 
 func Set(ctx context.Context, key string, value string) (*Settings, error) {
 	const sql = `
-	UPDATE settings
+	INSERT INTO settings (key, value)
+	VALUES ($1, $2)
+	ON CONFLICT (key) DO UPDATE
 	SET value = $2,
-		updated_at = $3
-	WHERE key = $1
+		updated_at = CURRENT_TIMESTAMP
 	RETURNING *
 	`
 
 	settings := &Settings{}
-	if err := data.Get(ctx, settings, sql, key, value, time.Now()); err != nil {
+	if err := data.Get(ctx, settings, sql, key, value); err != nil {
 		return nil, err
 	} else {
 		return settings, nil
