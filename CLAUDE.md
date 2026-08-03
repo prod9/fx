@@ -161,12 +161,11 @@ commits, update `CHANGELOG.md`, `./platform release --patch` (tags + pushes the 
 Default skills for this project (drives `ace.toml` `skills` filter):
 
 - `ace`, `ace-*` — ACE workflow / session management
-- `general-coding` — base coding workflow
+- `code`, `architect` — mandatory base coding + design laws (per THE LAW)
 - `go-coding` — Go conventions
-- `prod9-fx` — this framework's own conventions and API reference
-- `markdown-writing` — for DOCS.md / README.md / CHANGELOG.md edits
-- `shell` — release/run scripts
-- `rtk` — shell-output compaction
+- `p9-fx` — this framework's own conventions and API reference
 - `skill-creator` — school skill edits propagate from here
-- `issue-creator` — ticket drafting
 - `note-taker` — meeting/discussion capture
+
+Shell-output compaction rides `lowfat-pantry` (active from the user layer, not
+project-selected).
