@@ -49,8 +49,8 @@ func (p *Provider) Get(name string) (string, bool, error) {
 }
 
 func (p *Provider) Set(name string, val string) error {
-	_, err := Set(p.dbContext(), name, val)
-	return err
+	action := &Upsert{Key: name, Value: val}
+	return action.Execute(p.dbContext(), &Settings{})
 }
 
 func (p *Provider) dbContext() context.Context {
