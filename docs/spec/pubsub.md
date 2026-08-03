@@ -1,6 +1,6 @@
 # Pub/Sub — Postgres LISTEN/NOTIFY
 
-**Status:** accepted (not yet implemented)
+**Status:** accepted
 
 The `pubsub` package is a typed pub/sub built on Postgres `LISTEN`/`NOTIFY`. FX apps are
 already locked into Postgres, so pub/sub comes from the database already running — no new
@@ -132,12 +132,12 @@ alias:
 var CacheFlushed = pubsub.NewChannel[struct{}]("cache_flushed")
 ```
 
-`NewChannel[T]` records a type-erased descriptor (name + type name) in a package registry
-that powers `pubsub channels` introspection. **It panics on a duplicate registration** —
-the same channel name declared twice, or the same name with a different `T` — because a
-name collision is a program-construction error that must surface at startup, not a
-runtime condition to handle. Payloads ride the wire as JSON of `T`; that boundary is the
-one sanctioned `any`-shaped seam.
+`NewChannel[T]` validates the name (below) and **panics on a malformed one** — a
+program-construction error that must surface at startup, not a runtime condition to
+handle. Channels are declared at package scope and named after the var that holds them
+(the `config` convention), so an accidental name collision is a non-issue; the package
+keeps no registry and does no duplicate-detection. Payloads ride the wire as JSON of `T`;
+that boundary is the one sanctioned `any`-shaped seam.
 
 **Channel names are Postgres identifiers.** `LISTEN` / `NOTIFY` cannot parameterize the
 channel name, so `NewChannel` validates the name as a plain identifier (letters, digits,
@@ -150,8 +150,12 @@ distinct.
 
 ```go
 func Publish[T any](ctx context.Context, ch Channel[T], payload T) error
+func PublishRaw(ctx context.Context, name string, payload []byte) error
 ```
 
+`Publish` marshals `payload` to JSON and delegates to `PublishRaw`, the untyped floor that
+takes a channel name and pre-marshaled bytes — for the CLI and any caller holding a name
+and bytes rather than a typed channel. Both enforce the same size limit and tx behavior.
 `ctx` leads, per Go convention. Publish runs through the existing `data.Exec` path on the
 pooled connection, so it rides whatever tx context it is called in: inside `data.Run(...)`
 it joins the parent tx and fires on that commit; called on its own it runs a
@@ -165,11 +169,12 @@ migration.
 
 ```go
 func Subscribe[T any](ctx context.Context, ch Channel[T]) (<-chan T, context.CancelFunc, error)
+func SubscribeRaw(ctx context.Context, name string) (<-chan []byte, context.CancelFunc, error)
 ```
 
-`Subscribe` opens its own dedicated connection, issues `LISTEN`, and runs one
-`WaitForNotification` loop that decodes each payload into `T` and feeds the returned
-channel. **The initial connect and `LISTEN` are synchronous: if either fails — including a
+`SubscribeRaw` is the untyped floor: it opens the dedicated connection, issues `LISTEN`,
+and streams bare payload bytes — for the CLI and name-based callers. `Subscribe` wraps it,
+decoding each payload into `T` and feeding the returned typed channel. **The initial connect and `LISTEN` are synchronous: if either fails — including a
 connection-cap block or Postgres "too many clients" (§4) — `Subscribe` returns the error
 rather than a live channel**, so the failure surfaces loud at the callsite instead of a
 silent never-delivering stream.
@@ -278,7 +283,6 @@ A `pubsub` cobra command group mirroring `store`:
 |--------------------------------|----------------------------------------------------------------|
 | `pubsub notify <channel> <payload>` | Publish from the CLI.                                      |
 | `pubsub listen <channel>...`   | Subscribe and print to stdout; also the reference stand-alone consumer. |
-| `pubsub channels`              | List declared channels from the `NewChannel` registry.         |
 
 The CLI operates on channel *names* as strings — the untyped floor beneath the typed
 `Channel[T]` layer — since a command line has no compile-time `T`. The typed API is the
@@ -292,7 +296,7 @@ correctness is observed.
 
 ## Testing
 
-The typed marshal/registry layer and channel-name validation are unit-testable without a
+The typed marshal layer and channel-name validation are unit-testable without a
 database. Publish/subscribe round-trips test against a real Postgres (`fxtest`
 `ConnectTestDatabase`), asserting best-effort delivery under a live listener and the
 documented drop under a stalled consumer — not exactly-once, which the contract does not
@@ -327,7 +331,7 @@ resilient to a payload it can't fully decode anyway.
 |------------------------------|---------------------------------------------------------------------------------------|
 | Modular by composition       | ships as a package of typed channel descriptors, not a bus                            |
 | Thin wrapper over primitives | wraps `pg_notify` + `WaitForNotification`; pg semantics surfaced, not hidden           |
-| Decentralized declaration    | channels declared at package scope like config vars; self-register for introspection  |
+| Decentralized declaration    | channels declared at package scope like config vars, named after their var             |
 | Context as carry-bag         | publish and subscribe both read the ambient `data` context                            |
 | Everything optional          | no wiring for callers; no process-wide service to start                               |
 | Operational first-class      | `pubsub notify` / `listen` / `channels` subcommands                                   |
