@@ -18,7 +18,7 @@ import (
 var (
 	DatabaseURLConfig     = config.Str("DATABASE_URL")
 	DatabaseMaxIdleConfig = config.IntDef("DATABASE_MAX_IDLE", runtime.NumCPU())
-	DatabaseMaxOpenConfig = config.IntDef("DATABASE_MAX_OPEN", -1)
+	DatabaseMaxOpenConfig = config.IntDef("DATABASE_MAX_OPEN", 64)
 )
 
 func MustConnect(cfg *config.Source) *sqlx.DB {
