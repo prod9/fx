@@ -1,7 +1,8 @@
 # vim: filetype=toml
 
 maintainer = "Chakrit Wichian <chakrit@prodigy9.co>"
-platform = "auto"
+local_arch = "auto"
+publish_arch = "amd64"
 repository = "https://github.com/prod9/fx"
 
 environments = ["fx.prodigy9.co"]
@@ -21,7 +22,7 @@ excludes = [
 
 [modules.fx]
 args = ["serve"]
-builder = "go/basic"
+framework = "go/basic"
 image = "ghcr.io/prod9/fx"
 package = "fx.prodigy9.co"
 timeout = "2m0s"
