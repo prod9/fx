@@ -18,6 +18,9 @@ type Upsert struct {
 var _ controllers.Action = (*Upsert)(nil)
 
 func (a *Upsert) Execute(ctx context.Context, out any) error {
+	if err := ensureSettingsTable(ctx); err != nil {
+		return err
+	}
 	return data.Get(ctx, out, `
 		INSERT INTO settings (key, value)
 		VALUES ($1, $2)
@@ -28,7 +31,7 @@ func (a *Upsert) Execute(ctx context.Context, out any) error {
 		a.Key, a.Value)
 }
 
-func (c Ctr) Upsert(resp http.ResponseWriter, req *http.Request) {
+func (c ctr) Upsert(resp http.ResponseWriter, req *http.Request) {
 	action, setting := &Upsert{Key: chi.URLParam(req, "slug")}, &Settings{}
 	if err := controllers.ExecuteAction(resp, req, action, setting); err != nil {
 		render.Error(resp, req, 500, err)

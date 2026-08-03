@@ -99,8 +99,9 @@ Notable ones are:
 
 ### `settings.App`
 
-Key-value settings stored in PostgreSQL with a REST API and config provider. Include it
-by mounting the fragment:
+Key-value settings stored in PostgreSQL with a config provider and an optional REST API.
+Mount the fragment for the data layer; the table self-initializes on first access (and via
+the embedded migration on deploy), so no consumer migration is required:
 
 ```go
 app.Build().
@@ -108,8 +109,20 @@ app.Build().
   Start()
 ```
 
-Provides CRUD functions: `settings.List()`, `settings.Get()`, `settings.Set()`,
-`settings.Delete()`.
+Read/write from Go: `settings.List(ctx)`, `settings.Get(ctx, key, fallback)` (returns the
+fallback when the key is absent — never an error), the `settings.Upsert{Key, Value}` action
+(`Execute(ctx, out)`), and `settings.Delete(ctx, key)`.
+
+The REST controller is **not** auto-mounted — settings data would otherwise be exposed by
+the mere act of mounting the fragment. Mount it yourself inside a route group you guard, so
+auth / RBAC / IP-allowlisting is a requirement, not a convention:
+
+```go
+r.Route("/admin", func(r chi.Router) {
+  r.Use(adminAuth)                 // your guard
+  settings.MountRoutes(cfg, r)     // wires GET/POST/DELETE /settings under it
+})
+```
 
 ### `files.App`
 

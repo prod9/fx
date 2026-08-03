@@ -37,14 +37,14 @@ func (p *Provider) Initialize() error {
 }
 
 func (p *Provider) Get(name string) (string, bool, error) {
-	settings, err := Get(p.dbContext(), name)
+	setting, err := lookup(p.dbContext(), name)
 	switch {
 	case data.IsNoRows(err):
 		return "", false, nil
 	case err != nil:
 		return "", false, err
 	default:
-		return settings.Value, true, nil
+		return setting.Value, true, nil
 	}
 }
 
