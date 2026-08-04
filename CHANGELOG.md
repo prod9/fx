@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.10.0
+
+* **pubsub:** New `pubsub` package — a typed pub/sub built on Postgres LISTEN/NOTIFY.
+  Declare a channel at package scope (`var OrdersChanged = pubsub.NewChannel[OrderEvent]
+  ("orders_changed")`; `struct{}` for signal-only channels), then `Publish(ctx, ch,
+  payload)` and `Subscribe(ctx, ch)` with JSON-encoded typed payloads; `PublishRaw`/
+  `SubscribeRaw` expose the string floor. Subscriptions hold one pooled connection for
+  their lifetime and auto-reconnect on a tight backoff. It is a latency optimization over
+  polling, not a delivery guarantee — NOTIFY is at-most-once, so treat a notification as
+  "something changed, look now" and re-derive from the table; anything needing guaranteed
+  delivery uses `worker`. Channel names are whitelisted to plain identifiers (LISTEN can't
+  parameterize its name) and payloads are capped at the 8000-byte NOTIFY ceiling. See
+  `docs/spec/pubsub.md` and `examples/pubsub`.
+* **data:** `DATABASE_MAX_OPEN` now defaults to 64 (was unlimited). A pubsub subscription
+  holds a pooled connection for its whole life, so the pool needs a finite ceiling
+  operators can size against Postgres `max_connections`; 64 leaves headroom under a
+  default `max_connections` of 100. `DATABASE_MAX_IDLE` may now be 0.
+
 ## v0.9.2
 
 * **app/settings:** New settings fragment — a key/value store table owned by an embedded
