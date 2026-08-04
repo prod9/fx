@@ -47,8 +47,8 @@ MCP server), not in the repo. Find it with the MCP's collection listing; the col
 home states the conventions, a Roadmap doc holds the priority-banded index, and a task
 template gives the per-item shape. The boundary holds both ways: Outline tracks *open
 work*, `docs/` holds *what's true* — when an item ships a spec/decision, the record lands
-in `docs/` and the Outline item is closed. (`docs/TODO.md` is the legacy backlog, pending
-migration into Outline.)
+in `docs/` and the Outline item is closed. (`docs/TODO.md` is now a redirect stub — the
+backlog has fully moved to Outline.)
 
 ## ACE / Coding School
 
@@ -161,7 +161,7 @@ commits, update `CHANGELOG.md`, `./platform release --patch` (tags + pushes the 
 - `docs/guides/` — How-tos for using FX or operating the repo (releasing).
 - `docs/{decisions,vendor,scratch}/` — Dated rulings, third-party cribs, unsettled
   exploration (see `docs/README.md` for the routing gate).
-- `docs/TODO.md` — Running follow-up list.
+- `docs/TODO.md` — Redirect stub; open work lives in the Outline FX collection.
 - `DOCS.md` — Now a thin index pointing into `docs/spec/`; kept for anyone who
   bookmarked the old path.
 - `README.md` — Project overview, install, philosophy summary, vanity server.
