@@ -28,9 +28,10 @@ default replaces a dishonest infinite budget with a finite, explicit one.
 Reaching the pgx handle is unavoidable and is **not** what this decision forbids.
 `WaitForNotification` is a `*pgx.Conn` method with no database/sql equivalent, and pgx is
 already our driver. The subscription holds a pooled `*sql.Conn` (`db.Conn(ctx)`) and
-reaches its underlying `*pgx.Conn` through the `pgx/v5/stdlib` `.Raw()` escape hatch —
-pgx's own public, supported bridge for `LISTEN`/`NOTIFY` and `COPY`. The connection stays
-owned and counted by the pool; only the always-in-a-transaction `data.Scope` model is
+reaches its underlying `*pgx.Conn` through the standard `sql.Conn.Raw` driver-access
+method — a single `dc.(*stdlib.Conn).Conn()` type assertion, which is `database/sql`'s
+documented path to the driver connection for `LISTEN`/`NOTIFY` and `COPY`. The connection
+stays owned and counted by the pool; only the always-in-a-transaction `data.Scope` model is
 bypassed for the bare listen loop, which is why the spec's "why the existing surfaces don't
 fit" section calls this out as a deliberate exception rather than a new connection API.
 
@@ -58,8 +59,8 @@ fit" section calls this out as a deliberate exception rather than a new connecti
 | `WaitForNotification` needs `*pgx.Conn`, so you're forced into a separate pgx connection. | No — hold a pooled `*sql.Conn` from `db.Conn(ctx)` and reach the pgx handle via `sqlConn.Raw` + `driverConn.(*stdlib.Conn).Conn()`. The connection is never opened outside the pool. |
 | A held listen connection starves the pool for real queries. | That is the point of budgeting it. `-1 → 64` makes the held cost finite and visible; an unlimited pool would only hide exhaustion until `max_connections` fails. |
 | A dedicated `pgxpool` isolates subscription load — cleaner. | Two pools, two numbers, and the sum is the real ceiling. Isolation here trades one honest budget for two implicit ones. |
-| `pgx.Connect` is fewer lines than the `.Raw()` type assertion. | Fewer lines at one callsite, dishonest system-wide. The `.Raw()` bridge is pgx's sanctioned public hatch, encapsulated once inside `Subscribe`. |
-| Reaching pgx internals via `.Raw()` is fragile. | `stdlib.Conn` and its `.Conn()` method are exported, documented API intended for exactly `LISTEN`/`COPY`; it is not reflection into unexported internals, and it adds no dependency pgx isn't already. |
+| `pgx.Connect` is fewer lines than the `.Raw()` type assertion. | Fewer lines at one callsite, dishonest system-wide. `sql.Conn.Raw` is standard-library driver access, encapsulated once inside `Subscribe`. |
+| Reaching the `*pgx.Conn` via `.Raw()` is fragile. | `stdlib.Conn` and its `.Conn()` method are exported, documented API intended for exactly `LISTEN`/`COPY`; it is not reflection into unexported internals, and it adds no dependency pgx isn't already. |
 | Holding a connection outside a transaction breaks `data`'s tx-always model. | Deliberately, and only for the listen loop. The connection still comes from `data.Connect`'s pool; only `data.Scope` tx-scoping is bypassed, documented as an exception. |
 | `64` is arbitrary. | It is a finite starting budget with headroom under a default Postgres `max_connections` of 100. It is not a tuning target — it is an honest default replacing an infinite one; raising it is a deliberate capacity decision. |
 
