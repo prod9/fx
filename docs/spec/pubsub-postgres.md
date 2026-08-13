@@ -74,7 +74,7 @@ connection never carries a stale registration into its next borrower.
 backend (~5–10 MB of server memory each), so the practical ceiling is **low hundreds**,
 bounded by `max_connections` and `DATABASE_MAX_OPEN`. A handful of stand-alone consumers
 is nothing; thousands of websocket clients do not fit this driver — that is what the
-[Redis driver](pubsub-redis.md) (or a real broker, plugged in via the registry) is for.
+[Redis driver](pubsub-redis.md) is for.
 
 Because subscriptions share the pool, an app that runs them **must** budget for them.
 `DATABASE_MAX_OPEN` defaults to `64` (see `data`) precisely so a subscription cannot

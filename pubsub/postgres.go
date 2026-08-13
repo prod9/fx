@@ -3,10 +3,8 @@ package pubsub
 import (
 	"context"
 	"errors"
-	"net/url"
 	"time"
 
-	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/fxlog"
 
@@ -19,12 +17,6 @@ var ErrNoDatabase = errors.New("pubsub: no database in context")
 
 // reconnectDelay is the tight backoff between listen-connection reconnect attempts.
 const reconnectDelay = 1 * time.Second
-
-func init() {
-	RegisterScheme("postgres", func(cfg *config.Source, u *url.URL) (Driver, error) {
-		return postgresDriver{}, nil
-	})
-}
 
 // postgresDriver is the default driver: LISTEN/NOTIFY over the *sqlx.DB already on the
 // data context. It holds no state of its own — the database rides ctx, so it needs no

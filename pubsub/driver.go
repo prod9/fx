@@ -5,61 +5,42 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"sync"
 
 	"fx.prodigy9.co/config"
 )
 
 var (
-	// URLConfig selects the backend driver: the URL's scheme picks the driver from the
-	// registry, the remainder is the driver's to interpret. Unset means the Postgres
-	// driver over the ambient data context — exactly the pre-driver behavior.
+	// URLConfig selects the backend driver: the URL's scheme picks a built-in driver,
+	// the remainder is the driver's to interpret. Unset means the Postgres driver over
+	// the ambient data context — exactly the pre-driver behavior.
 	URLConfig = config.Str("PUBSUB_URL")
 
-	ErrUnknownScheme = errors.New("pubsub: no driver registered for scheme")
-
-	registryMutex sync.Mutex
-	factories     = map[string]func(cfg *config.Source, u *url.URL) (Driver, error){}
-	drivers       = map[string]Driver{} // resolved drivers, cached per URL
+	ErrUnknownScheme = errors.New("pubsub: unsupported PUBSUB_URL scheme")
 )
 
-// Driver is the backend seam, sitting exactly at the untyped floor: everything above it
-// (Channel[T], the JSON codec, name and payload validation) is driver-agnostic. Names
-// and payloads arrive already validated.
-type Driver interface {
-	// Publish sends payload on the named channel, best-effort, at-most-once.
+// driver is the internal backend seam, sitting exactly at the untyped floor: everything
+// above it (Channel[T], the JSON codec, name and payload validation) is driver-agnostic,
+// and the public API stays opaque about what runs underneath. Names and payloads arrive
+// already validated. Implementations must make the initial Subscribe connect synchronous
+// (error, never a live channel, on failure), reconnect silently, drop (never block) on a
+// slow consumer, and close the returned channel only after the loop has fully stopped.
+type driver interface {
 	Publish(ctx context.Context, channel, payload string) error
-
-	// Subscribe streams payloads on the named channel until ctx is cancelled or the
-	// returned cancel is called. The initial connect is synchronous: on failure it
-	// returns the error, never a live channel. Implementations must reconnect silently,
-	// drop (never block) on a slow consumer, and close the returned channel only after
-	// the loop has fully stopped.
 	Subscribe(ctx context.Context, channel string) (<-chan string, context.CancelFunc, error)
 }
 
 type driverKey struct{}
 
-// WithDriver injects a driver directly, bypassing config resolution — also the test
-// seam: an in-memory Driver fake needs no database and no config.
-func WithDriver(ctx context.Context, d Driver) context.Context {
+// withDriver injects a driver directly, bypassing config resolution — the in-package
+// test seam, letting unit tests run against an in-memory fake with no database.
+func withDriver(ctx context.Context, d driver) context.Context {
 	return context.WithValue(ctx, driverKey{}, d)
 }
 
-// RegisterScheme maps a PUBSUB_URL scheme to a driver factory. postgres and redis are
-// pre-registered; an app plugs in its own backend by registering a scheme at init.
-func RegisterScheme(scheme string, factory func(cfg *config.Source, u *url.URL) (Driver, error)) {
-	registryMutex.Lock()
-	defer registryMutex.Unlock()
-	factories[scheme] = factory
-}
-
-// resolveDriver picks the driver for one publish or subscribe: a WithDriver injection
-// wins, then the PUBSUB_URL scheme via the registry (constructed lazily, cached per
-// URL), and unset falls back to Postgres over the ambient data context — exactly the
-// pre-driver behavior.
-func resolveDriver(ctx context.Context) (Driver, error) {
-	if d, ok := ctx.Value(driverKey{}).(Driver); ok {
+// resolveDriver picks the driver for one publish or subscribe from PUBSUB_URL on the ctx
+// config source; unset falls back to Postgres over the ambient data context.
+func resolveDriver(ctx context.Context) (driver, error) {
+	if d, ok := ctx.Value(driverKey{}).(driver); ok {
 		return d, nil
 	}
 
@@ -71,25 +52,14 @@ func resolveDriver(ctx context.Context) (Driver, error) {
 		return postgresDriver{}, nil
 	}
 
-	registryMutex.Lock()
-	defer registryMutex.Unlock()
-	if d, ok := drivers[rawURL]; ok {
-		return d, nil
-	}
-
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("pubsub: invalid PUBSUB_URL: %w", err)
 	}
-	factory, ok := factories[u.Scheme]
-	if !ok {
+	switch u.Scheme {
+	case "postgres":
+		return postgresDriver{}, nil
+	default:
 		return nil, fmt.Errorf("%w: %q", ErrUnknownScheme, u.Scheme)
 	}
-
-	d, err := factory(config.FromContext(ctx), u)
-	if err != nil {
-		return nil, err
-	}
-	drivers[rawURL] = d
-	return d, nil
 }

@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-	"net/url"
 	"testing"
 	"time"
 
@@ -54,7 +53,7 @@ func (f *fakeDriver) Subscribe(ctx context.Context, channel string) (<-chan stri
 
 func TestWithDriverOverridesResolution(t *testing.T) {
 	fake := newFakeDriver()
-	ctx := WithDriver(context.Background(), fake)
+	ctx := withDriver(context.Background(), fake)
 
 	require.NoError(t, PublishRaw(ctx, "orders_changed", `{"id":1}`))
 	require.Equal(t, []string{`{"id":1}`}, fake.published["orders_changed"])
@@ -67,7 +66,7 @@ func TestTypedRoundTripThroughDriver(t *testing.T) {
 	ch := NewChannel[event]("driver_roundtrip")
 
 	fake := newFakeDriver()
-	ctx := WithDriver(context.Background(), fake)
+	ctx := withDriver(context.Background(), fake)
 
 	out, cancel, err := Subscribe(ctx, ch)
 	require.NoError(t, err)
@@ -99,20 +98,4 @@ func TestUnsetURLDefaultsToPostgres(t *testing.T) {
 	// driver over the ambient data context, so its absence is the error.
 	err := PublishRaw(context.Background(), "orders_changed", "x")
 	require.ErrorIs(t, err, ErrNoDatabase)
-}
-
-func TestSchemeDriverIsCachedPerURL(t *testing.T) {
-	calls := 0
-	RegisterScheme("cachedtest", func(cfg *config.Source, u *url.URL) (Driver, error) {
-		calls++
-		return newFakeDriver(), nil
-	})
-
-	cfg := fxtest.Configure()
-	config.Set(cfg, URLConfig, "cachedtest://localhost")
-	ctx := config.NewContext(context.Background(), cfg)
-
-	require.NoError(t, PublishRaw(ctx, "orders_changed", "a"))
-	require.NoError(t, PublishRaw(ctx, "orders_changed", "b"))
-	require.Equal(t, 1, calls)
 }

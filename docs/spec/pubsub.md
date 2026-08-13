@@ -6,9 +6,10 @@ The `pubsub` package is a typed pub/sub with a pluggable backend. The default ba
 Postgres `LISTEN`/`NOTIFY` ([`pubsub-postgres.md`](pubsub-postgres.md)) — no new broker,
 pub/sub comes from the database already running. A Redis driver
 ([`pubsub-redis.md`](pubsub-redis.md)) ships alongside it for deployments that already
-run Redis, and the driver seam is public so an app can plug in anything else (NATS, an
-in-memory fake for tests) without FX shipping it. It sits next to `worker` and `cache` as
-a top-level package.
+run Redis. The driver seam is internal — the two built-ins are the only backends, and an
+app committed to another transport (NATS, a real broker) uses that system's client
+directly instead of importing `pubsub`. It sits next to `worker` and `cache` as a
+top-level package.
 
 A channel is declared once at package scope, generic over its payload type — the
 `config.*Var` pattern — so publish and subscribe are type-checked end to end. `Subscribe`
@@ -203,57 +204,37 @@ client disconnect — the server stops managing the connection. The read loop is
 disconnect detector, so the handler must call the returned `cancel` when the socket read
 fails, rather than relying on `r.Context()` to tear the subscription down.
 
-### 4. Drivers — one seam, resolved from config
+### 4. Drivers — an internal seam, resolved from config
 
-The backend seam sits exactly at the untyped floor. Everything above it — `Channel[T]`,
-JSON codec, name and payload validation — is driver-agnostic; everything below it is one
-small interface:
+The backend seam sits exactly at the untyped floor and is **internal to the package** —
+the public API is `Publish`/`Subscribe` (and their `Raw` floor) alone, opaque about what
+runs underneath. Everything above the seam — `Channel[T]`, JSON codec, name and payload
+validation — is driver-agnostic; everything below it is one small unexported interface
+(`Publish(ctx, channel, payload string) error` and the matching `Subscribe`, at the raw
+string level because Go interfaces cannot carry generic methods, and because everything
+generic is codec work no driver should duplicate). Names and payloads arrive at the
+driver already validated.
 
-```go
-type Driver interface {
-    // Publish sends payload on the named channel, best-effort, at-most-once.
-    Publish(ctx context.Context, channel, payload string) error
+There are no extension points: no exported driver type, no context override, no scheme
+registry. The sanctioned backends are the two built-ins, hard-coded; an app committed to
+another transport (NATS, a real broker) should use that system's client directly rather
+than flatten it to this at-most-once contract — it simply doesn't import `pubsub`. The
+in-memory fake driving the unit tests is in-package, injected through an unexported test
+seam.
 
-    // Subscribe streams payloads on the named channel until ctx is cancelled or the
-    // returned cancel is called. The initial connect is synchronous: on failure it
-    // returns the error, never a live channel. The implementation must reconnect
-    // silently across connection loss, drop (never block) on a slow consumer, and
-    // close the returned channel only after its loop has fully stopped.
-    Subscribe(ctx context.Context, channel string) (<-chan string, context.CancelFunc, error)
-}
-```
+**Resolution.** `PublishRaw` and `SubscribeRaw` resolve their driver per call from
+`PUBSUB_URL` on the `ctx` config source (mirrors `STORAGE_URL`):
 
-The seam is at the raw string level, not the typed level, because Go interfaces cannot
-carry generic methods — and because everything generic is codec work that no driver should
-duplicate. Names and payloads arrive at the driver already validated.
-
-**Resolution.** `PublishRaw` and `SubscribeRaw` resolve their driver per call, in order:
-
-1. A driver injected with `pubsub.WithDriver(ctx, d)` — direct override, bypassing config.
-   This is also the test seam: an in-memory `Driver` fake needs no database and no config.
-2. `PUBSUB_URL` from the config source on `ctx` — the primary configuration method. The
-   URL's scheme selects the driver via the registry (below); the rest of the URL is the
-   driver's to interpret. Mirrors `STORAGE_URL`.
-3. Unset — the Postgres driver over the ambient `data` context. This is the
-   zero-configuration default and exactly the pre-driver behavior, so existing apps need
-   no change.
+- `postgres` / `redis` scheme — the matching built-in; the rest of the URL is the
+  driver's to interpret. Any other scheme is a resolution error, surfaced by the first
+  publish or subscribe.
+- Unset — the Postgres driver over the ambient `data` context. This is the
+  zero-configuration default and exactly the pre-driver behavior, so existing apps need
+  no change.
 
 Drivers resolved from `PUBSUB_URL` are constructed lazily and cached per-process per-URL
 (the `cache.Redis` / `blobstore.Client` pattern), so resolution on the hot path is a map
 lookup, not a dial.
-
-**Registry.** Schemes map to driver factories in a package-level registry:
-
-```go
-func RegisterScheme(scheme string, factory func(cfg *config.Source, u *url.URL) (Driver, error))
-```
-
-`postgres` and `redis` are pre-registered. An app plugs in its own backend by registering
-a scheme at init and pointing `PUBSUB_URL` at it — FX ships no NATS driver, because an app
-already committed to NATS should usually use the NATS client directly rather than
-flattening it to this at-most-once contract; the registry exists for the app that wants
-FX's typed-channel surface over its own transport anyway. An unknown scheme is a
-resolution error, surfaced by the first publish or subscribe.
 
 ### 5. Backpressure — drop to the slow consumer, never block the loop
 
@@ -279,12 +260,11 @@ than the package hides.
 |------------|--------------------------------------------|----------------------------------------------------------------|
 | *(unset)*  | [`pubsub-postgres.md`](pubsub-postgres.md) | Default. `LISTEN`/`NOTIFY` over the ambient `data` context.    |
 | `redis`    | [`pubsub-redis.md`](pubsub-redis.md)       | Redis PUB/SUB; websocket-scale subscription counts.            |
-| *(custom)* | —                                          | App-registered via `RegisterScheme`; must honor §4's contract. |
 
 ## Configuration
 
 * `PUBSUB_URL` — driver selection, default empty (Postgres over the `data` context). The
-  scheme picks the driver from the registry; the remainder is driver-defined. Declared in
+  scheme picks the built-in driver; the remainder is driver-defined. Declared in
   `pubsub` next to its consumer, per the config philosophy.
 * `DATABASE_MAX_OPEN` (`data`) — under the Postgres driver, the hard ceiling on concurrent
   subscriptions plus in-flight queries; see [`pubsub-postgres.md`](pubsub-postgres.md).
@@ -313,7 +293,7 @@ observed.
 ## Testing
 
 The typed marshal layer, channel-name validation, and driver resolution are unit-testable
-without a backend — resolution against an in-memory `Driver` injected via `WithDriver`.
+without a backend — against an in-package in-memory fake driver on an unexported seam.
 Postgres round-trips test against a real Postgres (`fxtest` `ConnectTestDatabase`);
 Redis round-trips against a real Redis where available, skipped otherwise. Both assert
 best-effort delivery under a live listener and the documented drop under a stalled
@@ -344,8 +324,8 @@ resilient to a payload it can't fully decode anyway.
 | Modular by composition       | ships as a package of typed channel descriptors, not a bus                            |
 | Thin wrapper over primitives | wraps `pg_notify` / Redis PUB/SUB; backend semantics surfaced, not hidden             |
 | Decentralized declaration    | channels declared at package scope like config vars; `PUBSUB_URL` declared in-package |
-| Context as carry-bag         | driver override, config, and the default's DB all ride `ctx`                          |
+| Context as carry-bag         | config and the default's DB ride `ctx`; nothing new to wire at composition time       |
 | Everything optional          | zero config = Postgres over the existing data context; no service to start            |
 | Operational first-class      | `pubsub notify` / `listen` work against whichever driver is configured                |
 | Punt distributed problems    | at-most-once documented; durability points at `worker`; fan-out leans on backend      |
-| Convention one layer deep    | one subscribe surface; one config var; registry is the single escape hatch            |
+| Convention one layer deep    | one subscribe surface; one config var; no extension points                            |

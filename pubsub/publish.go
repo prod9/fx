@@ -7,8 +7,8 @@ import (
 )
 
 // PublishRaw sends a pre-marshaled payload on a channel by name — the untyped floor
-// beneath Publish. It validates the name and size limit, resolves the driver (WithDriver
-// → PUBSUB_URL → Postgres over the data context), and hands the send to it. Whether the
+// beneath Publish. It validates the name and size limit, resolves the driver (PUBSUB_URL
+// scheme, unset = Postgres over the data context), and hands the send to it. Whether the
 // publish rides an ambient transaction is driver-specific; prefer publishing
 // out-of-band, after the business commit — the one ordering correct on every driver.
 func PublishRaw(ctx context.Context, name string, payload string) error {

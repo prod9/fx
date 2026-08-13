@@ -8,7 +8,7 @@ import (
 )
 
 // SubscribeRaw streams raw payloads on a channel by name — the untyped floor beneath
-// Subscribe. It validates the name, resolves the driver (WithDriver → PUBSUB_URL →
+// Subscribe. It validates the name, resolves the driver (PUBSUB_URL scheme, unset =
 // Postgres over the data context), and hands the subscription to it. The initial connect
 // is synchronous: on failure it returns the error rather than a live channel, so the
 // failure surfaces loud at the callsite instead of a silent never-delivering stream.
