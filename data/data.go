@@ -56,6 +56,7 @@ func CreateDB(cfg *config.Source) error {
 	if err != nil {
 		return fmt.Errorf("database: %w", err)
 	}
+	defer conn.Close()
 
 	if _, err := conn.Exec("CREATE DATABASE " + dbName); err != nil {
 		return fmt.Errorf("database: %w", err)
@@ -69,6 +70,7 @@ func DropDB(cfg *config.Source) error {
 	if err != nil {
 		return fmt.Errorf("database: %w", err)
 	}
+	defer conn.Close()
 
 	if _, err := conn.Exec("DROP DATABASE " + dbName); err != nil {
 		return fmt.Errorf("database: %w", err)
