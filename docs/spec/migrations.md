@@ -74,7 +74,9 @@ api/files/202504041033_create_files.up.sql
 
 App fragments that ship their own embedded migrations (`files.App`, `settings.App`,
 etc.) are aggregated automatically when mounted — you do not need to re-embed them at
-the root.
+the root. The registration happens at `Start()` time; applications composing onto their
+own root command without `Start()` call `app.RegisterMigrations(root)` themselves (see
+the app-fragments spec).
 
 Other commands include:
 

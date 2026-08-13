@@ -67,6 +67,40 @@ Couple things to note:
 * Embedded migrations on child fragments are picked up automatically — each fragment's
   `EmbedMigrations(fs)` registers with the migrator at `Start()` time.
 
+## Composing without `Start()`
+
+Everything `Start()` assembles is reachable piecemeal. Four package functions walk a
+finished tree and hand back plain values; `Start()` is one reference consumer of them,
+not the only door:
+
+* `app.CollectCommands(root)` — every fragment's commands, flat.
+* `app.CollectJobs(root)` — every fragment's jobs, flat.
+* `app.CollectFragment(root)` — the HTTP fragment tree, child isolation preserved.
+* `app.RegisterMigrations(root)` — registers every fragment's embedded migrations into
+  the migrator's global registry (the one mutating walk; `LoadAuto` and the data
+  command read that registry at run time).
+
+`Builder.App()` exposes the built tree as the `app.Interface` these functions consume.
+A host application mounts fx fragments onto its own root command like so:
+
+```go
+fxApps := app.Build().
+  Mount(auth.App).
+  Mount(billing.App)
+
+app.RegisterMigrations(fxApps.App())
+
+hostRoot.AddCommand(app.CollectCommands(fxApps.App())...)
+hostRoot.AddCommand(
+  cmd.BuildServeCommandFromFragments(app.CollectFragment(fxApps.App())),
+  cmd.BuildWorkerCommand(app.CollectJobs(fxApps.App())...),
+  cmd.BuildDataCommand(),
+)
+```
+
+Swap the `cmd.Build*` calls for custom commands consuming the same collected values
+when the host needs its own flags or lifecycle.
+
 Once composed, your `main` will become a CLI application with a few useful commands:
 
 ```

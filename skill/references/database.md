@@ -99,7 +99,9 @@ func DoWork(ctx context.Context) (err error) {
 
 SQL file-based migration engine in `data/migrator`. Included via `AddDefaults()` or
 manually with `Commands(cmd.BuildDataCommand())` — pass `migrator.Source` values to
-thread explicit migration sources into the migration-reading subcommands.
+thread explicit migration sources into the migration-reading subcommands. Apps composing
+onto their own root command without `Start()` call `app.RegisterMigrations(root)` so
+fragment-embedded migrations reach the registry the data command reads.
 
 ### Embedding for production
 

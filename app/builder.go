@@ -17,7 +17,11 @@ type Builder struct {
 }
 
 func Build() *Builder           { return &Builder{} }
-func (b *Builder) Start() error { return Start(&b.appImpl) }
+func (b *Builder) Start() error { return Start(b.App()) }
+
+// App exposes the built tree as an Interface — the form the collectors and Start
+// consume. Needed because the fluent setters shadow Interface's accessor methods.
+func (b *Builder) App() Interface { return &b.appImpl }
 
 func (b *Builder) AddDefaults() *Builder {
 	return b.AddDefaultMiddlewares().

@@ -27,9 +27,19 @@ func NewFragment(mws []middlewares.Interface, ctrs []controllers.Interface) *Fra
 }
 
 func (f *Fragment) IsEmpty() bool {
-	return f == nil ||
-		(len(f.mws) == 0 &&
-			len(f.ctrs) == 0)
+	if f == nil {
+		return true
+	}
+	if len(f.mws) > 0 || len(f.ctrs) > 0 {
+		return false
+	}
+
+	for _, child := range f.children {
+		if !child.IsEmpty() {
+			return false
+		}
+	}
+	return true
 }
 func (f *Fragment) HasNoMiddlewares() bool {
 	return f == nil || (len(f.mws) == 0)

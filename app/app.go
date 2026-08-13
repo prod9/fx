@@ -4,8 +4,6 @@ import (
 	"embed"
 
 	"fx.prodigy9.co/cmd"
-	"fx.prodigy9.co/data/migrator"
-	"fx.prodigy9.co/httpserver"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
 	"fx.prodigy9.co/worker"
@@ -25,14 +23,16 @@ type Interface interface {
 	Controllers() []controllers.Interface
 }
 
+// Start is the reference assembly over the collectors: any caller can run the same
+// collectors against its own root command instead.
 func Start(app Interface) error {
-	embedMigrations(app)
+	RegisterMigrations(app)
 
-	jobs, cmds, fragment := collect(app)
-	if len(jobs) > 0 {
+	cmds := CollectCommands(app)
+	if jobs := CollectJobs(app); len(jobs) > 0 {
 		cmds = append(cmds, cmd.BuildWorkerCommand(jobs...))
 	}
-	if !fragment.IsEmpty() {
+	if fragment := CollectFragment(app); !fragment.IsEmpty() {
 		if fragment.HasNoMiddlewares() {
 			fragment.AddMiddlewares(middlewares.DefaultForAPI()...)
 		}
@@ -42,37 +42,4 @@ func Start(app Interface) error {
 	return cmd.
 		BuildRootCommand(app.Description(), cmds...).
 		Execute()
-}
-
-func embedMigrations(app Interface) {
-	if mig := app.EmbeddedMigrations(); mig != nil {
-		migrator.Embed(*mig)
-	}
-	for _, child := range app.Children() {
-		embedMigrations(child)
-	}
-}
-
-func collect(app Interface) (
-	[]worker.Interface,
-	[]*cobra.Command,
-	*httpserver.Fragment,
-) {
-	var (
-		jobs     = app.Jobs()
-		cmds     = app.Commands()
-		fragment = httpserver.NewFragment(
-			app.Middlewares(),
-			app.Controllers(),
-		)
-	)
-
-	for _, child := range app.Children() {
-		childJobs, childCmds, childFragment := collect(child)
-		jobs = append(jobs, childJobs...)
-		cmds = append(cmds, childCmds...)
-		fragment.AddChild(childFragment)
-	}
-
-	return jobs, cmds, fragment
 }
