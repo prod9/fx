@@ -126,6 +126,7 @@ func (w *Worker) Start() (err error) {
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	var (
 		ctx    context.Context

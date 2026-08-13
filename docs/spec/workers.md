@@ -14,6 +14,9 @@ worker.Start() // blocks, polling for jobs
 worker.Stop()  // graceful shutdown
 ```
 
+`Start` opens its own database pool and closes it when it returns, so start/stop
+cycles do not accumulate connections.
+
 ## Job Interface
 
 Jobs implement the `worker.Interface`:
