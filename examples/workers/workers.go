@@ -5,7 +5,6 @@ import (
 
 	"fx.prodigy9.co/app"
 	"fx.prodigy9.co/cmd"
-	datacmd "fx.prodigy9.co/cmd/data"
 	"fx.prodigy9.co/fxlog"
 	"fx.prodigy9.co/worker"
 )
@@ -16,7 +15,7 @@ func main() {
 		Job(&Creator{}).
 		Job(&Incrementer{}).
 		Command(SpawnCmd).
-		Command(datacmd.Cmd).
+		Command(cmd.BuildDataCommand()).
 		Command(cmd.PrintConfigCmd).
 		Start()
 	if err != nil {

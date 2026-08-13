@@ -10,23 +10,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var listMigrationsCmd = &cobra.Command{
-	Use:   "list-migrations",
-	Short: "List all detected migration files.",
-	Run:   runListMigrationsCmd,
-}
+func buildListMigrationsCmd(srcs []migrator.Source) *cobra.Command {
+	return &cobra.Command{
+		Use:   "list-migrations",
+		Short: "List all detected migration files.",
+		Run: func(cmd *cobra.Command, args []string) {
+			_, cfg := cmdutil.NewBasicContext()
+			migrations, err := migrator.LoadAuto(cfg, srcs...)
+			if err != nil {
+				fxlog.Fatalf("list-migrations: %w", err)
+			}
 
-func runListMigrationsCmd(cmd *cobra.Command, args []string) {
-	_, cfg := cmdutil.NewBasicContext()
-	migrations, err := migrator.LoadAuto(cfg)
-	if err != nil {
-		fxlog.Fatalf("list-migrations: %w", err)
-	}
-
-	for _, migration := range migrations {
-		upPath := filepath.Join(migration.Dir, migration.Name+migrator.UpExt)
-		downPath := filepath.Join(migration.Dir, migration.Name+migrator.DownExt)
-		fmt.Println(upPath)
-		fmt.Println(downPath)
+			for _, migration := range migrations {
+				upPath := filepath.Join(migration.Dir, migration.Name+migrator.UpExt)
+				downPath := filepath.Join(migration.Dir, migration.Name+migrator.DownExt)
+				fmt.Println(upPath)
+				fmt.Println(downPath)
+			}
+		},
 	}
 }

@@ -27,8 +27,8 @@ func NewDataContext() (context.Context, *sqlx.DB, func()) {
 	return data.NewContext(ctx, db), db, cleanup
 }
 
-func NewMigratorContext() (context.Context, *migrator.Migrator, func()) {
+func NewMigratorContext(srcs ...migrator.Source) (context.Context, *migrator.Migrator, func()) {
 	ctx, db, cleanup := NewDataContext()
-	src := migrator.FromAuto(config.FromContext(ctx))
+	src := migrator.FromAuto(config.FromContext(ctx), srcs...)
 	return ctx, migrator.New(db, src), cleanup
 }

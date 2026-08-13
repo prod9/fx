@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"fx.prodigy9.co/cmd"
-	"fx.prodigy9.co/cmd/data"
 	"fx.prodigy9.co/cmd/pubsub"
 	"fx.prodigy9.co/cmd/store"
 	"fx.prodigy9.co/httpserver/controllers"
@@ -31,7 +30,7 @@ func (b *Builder) AddDefaultCommands() *Builder {
 	return b.Commands(
 		cmd.PrintConfigCmd,
 		cmd.TestEmailCmd,
-		data.Cmd,
+		cmd.BuildDataCommand(),
 		store.Cmd,
 		pubsub.Cmd,
 	)

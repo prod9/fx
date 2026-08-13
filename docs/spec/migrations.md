@@ -9,8 +9,14 @@ commands to the application:
 app := app.Build().
   Name("my todo app").
   // or just .AddDefaults() which already includes data commands
-  Commands(data.Cmd).
+  Commands(cmd.BuildDataCommand()).
 ```
+
+`cmd.BuildDataCommand(srcs ...migrator.Source)` builds the `data` command group.
+Explicit sources — for example, migrations collected from an app tree — are threaded
+into every migration-reading subcommand (`migrate`, `rollback`, `list-migrations`,
+`collect-migrations`, `resync-migrations`); called with none, the commands use the
+auto-detected sources alone.
 
 The following commands become available:
 
@@ -42,9 +48,21 @@ func main() {
 }
 ```
 
-The migrator will automatically look for embedded sources. Otherwise it will look at
-the current folder, and its parents, for the files. Use the `data list-migrations`
-command to check:
+Migration discovery (`migrator.LoadAuto`) resolves in tiers — first non-empty tier
+wins:
+
+1. The path configured via `DATABASE_MIGRATIONS`, if set (empty is an error — it is
+   likely a misconfiguration).
+2. The current working directory, recursively.
+3. The embedded tier: sources registered via `migrator.Embed` plus any sources passed
+   explicitly (e.g. through `cmd.BuildDataCommand`), union-merged.
+
+The union-merge itself is `migrator.Collect(srcs ...migrator.Source)` — it loads every
+source, skips those with no migrations, sorts the union by name, and returns
+`ErrNoMigrations` when the union is empty. Use it directly when composing migrations
+outside the auto path.
+
+Use the `data list-migrations` command to check what is detected:
 
 ```sh
 $ go run ./api data list-migrations

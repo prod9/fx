@@ -98,7 +98,8 @@ func DoWork(ctx context.Context) (err error) {
 ## Migrations
 
 SQL file-based migration engine in `data/migrator`. Included via `AddDefaults()` or
-manually with `Commands(data.Cmd)`.
+manually with `Commands(cmd.BuildDataCommand())` — pass `migrator.Source` values to
+thread explicit migration sources into the migration-reading subcommands.
 
 ### Embedding for production
 

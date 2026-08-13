@@ -1,22 +1,23 @@
 package data
 
-import "github.com/spf13/cobra"
+import (
+	"fx.prodigy9.co/data/migrator"
+	"github.com/spf13/cobra"
+)
 
-var Cmd = &cobra.Command{
-	Use:   "data",
-	Short: "Work with databases",
-}
-
-func init() {
-	Cmd.AddCommand(
-		collectMigrationsCmd,
+// Commands builds the data subcommands with the given migration sources threaded into
+// every migration-reading command. Sources join LoadAuto's embedded tier, so a
+// configured DATABASE_MIGRATIONS path or working-directory files still take precedence.
+func Commands(srcs ...migrator.Source) []*cobra.Command {
+	return []*cobra.Command{
+		buildCollectMigrationsCmd(srcs),
+		buildListMigrationsCmd(srcs),
+		buildMigrateCmd(srcs),
+		buildResyncMigrationsCmd(srcs),
+		buildRollbackCmd(srcs),
 		createDBCmd,
-		migrateCmd,
 		newMigrationCmd,
 		psqlCmd,
 		recoverMigrationsCmd,
-		rollbackCmd,
-		listMigrationsCmd,
-		resyncMigrationsCmd,
-	)
+	}
 }

@@ -11,54 +11,53 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var resyncMigrationsCmd = &cobra.Command{
-	Use:   "resync-migrations",
-	Short: "Update database migration cache to match program files",
-	Run:   runResyncMigrationsCmd,
-}
+func buildResyncMigrationsCmd(srcs []migrator.Source) *cobra.Command {
+	var force bool
 
-var forceResync bool
+	cmd := &cobra.Command{
+		Use:   "resync-migrations",
+		Short: "Update database migration cache to match program files",
+		Run: func(cmd *cobra.Command, args []string) {
+			var (
+				ctx, mig, cleanup = cmdutil.NewMigratorContext(srcs...)
+				prompt            = prompts.New(config.FromContext(ctx), args)
+			)
+			defer cleanup()
 
-func init() {
-	resyncMigrationsCmd.Flags().BoolVar(&forceResync, "force", false, "")
-	resyncMigrationsCmd.Flags().Lookup("force").Hidden = true
-}
+			plans, dirty, err := mig.Plan(ctx, migrator.IntentResync)
+			if err != nil {
+				fxlog.Fatalf("resync-migrations: %w", err)
+				return
+			} else if !dirty {
+				fxlog.Log("migrations up-to-date")
+				return
+			}
 
-func runResyncMigrationsCmd(cmd *cobra.Command, args []string) {
-	var (
-		ctx, mig, cleanup = cmdutil.NewMigratorContext()
-		prompt            = prompts.New(config.FromContext(ctx), args)
-	)
-	defer cleanup()
+			// assert(dirty)
+			for _, plan := range plans {
+				fmt.Println(plan)
+			}
+			fxlog.Log("migrations changed", fxlog.Int("migrations", len(plans)))
 
-	plans, dirty, err := mig.Plan(ctx, migrator.IntentResync)
-	if err != nil {
-		fxlog.Fatalf("resync-migrations: %w", err)
-		return
-	} else if !dirty {
-		fxlog.Log("migrations up-to-date")
-		return
+			if !force {
+				fxlog.Fatalf("dangerous operation, --force is required")
+			}
+			if !prompt.YesNo("re-synchronize migration content") {
+				return
+			}
+
+			for _, plan := range plans {
+				fmt.Println(plan)
+				if err := mig.Apply(ctx, plan); err != nil {
+					fxlog.Fatalf("resync-migrations: %w", err)
+				}
+			}
+
+			fxlog.Log("migration(s) synchronized", fxlog.Int("migrations", len(plans)))
+		},
 	}
 
-	// assert(dirty)
-	for _, plan := range plans {
-		fmt.Println(plan)
-	}
-	fxlog.Log("migrations changed", fxlog.Int("migrations", len(plans)))
-
-	if !forceResync {
-		fxlog.Fatalf("dangerous operation, --force is required")
-	}
-	if !prompt.YesNo("re-synchronize migration content") {
-		return
-	}
-
-	for _, plan := range plans {
-		fmt.Println(plan)
-		if err := mig.Apply(ctx, plan); err != nil {
-			fxlog.Fatalf("resync-migrations: %w", err)
-		}
-	}
-
-	fxlog.Log("migration(s) synchronized", fxlog.Int("migrations", len(plans)))
+	cmd.Flags().BoolVar(&force, "force", false, "")
+	cmd.Flags().Lookup("force").Hidden = true
+	return cmd
 }

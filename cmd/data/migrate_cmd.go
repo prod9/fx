@@ -13,19 +13,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var migrateCmd = &cobra.Command{
-	Use:   "migrate",
-	Short: "Runs all migration scripts in the configured migrations dir.",
-	Run:   runMigrateCmd,
-}
-
-func runMigrateCmd(cmd *cobra.Command, args []string) {
-	if err := runMigration(migrator.IntentMigrate, args); err != nil {
-		fxlog.Fatalf("migrate: %w", err)
+func buildMigrateCmd(srcs []migrator.Source) *cobra.Command {
+	return &cobra.Command{
+		Use:   "migrate",
+		Short: "Runs all migration scripts in the configured migrations dir.",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := runMigration(migrator.IntentMigrate, args, srcs); err != nil {
+				fxlog.Fatalf("migrate: %w", err)
+			}
+		},
 	}
 }
 
-func runMigration(intent migrator.Intent, args []string) (err error) {
+func runMigration(intent migrator.Intent, args []string, srcs []migrator.Source) (err error) {
 	defer errutil.Wrap("migrate", &err)
 
 	var (
@@ -38,7 +38,7 @@ func runMigration(intent migrator.Intent, args []string) (err error) {
 		return err
 	}
 
-	migrator := migrator.New(db, migrator.FromAuto(cfg))
+	migrator := migrator.New(db, migrator.FromAuto(cfg, srcs...))
 	plans, dirty, err := migrator.Plan(ctx, intent)
 	if err != nil {
 		return err

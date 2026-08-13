@@ -34,8 +34,8 @@ func FromFS(fsys fs.FS) Source  { return func() ([]Migration, error) { return lo
 func FromConfig(src *config.Source) Source {
 	return func() ([]Migration, error) { return loadMigrations(config.Get(src, MigrationPathConfig)) }
 }
-func FromAuto(cfg *config.Source) Source {
-	return func() ([]Migration, error) { return LoadAuto(cfg) }
+func FromAuto(cfg *config.Source, extras ...Source) Source {
+	return func() ([]Migration, error) { return LoadAuto(cfg, extras...) }
 }
 func FromSQL(name, upSQL, downSQL string) Source {
 	upSQL = strings.TrimSpace(upSQL)
@@ -99,7 +99,7 @@ func Embed(fsys embed.FS) {
 //
 // 1. Path configured via DATABASE_MIGRATIONS env var.
 // 2. Local working directory.
-// 3. Embedded migrations.
+// 3. Embedded migrations, union-merged with any explicitly-passed extra sources.
 //
 // The intended use case is that developer will be working with local files during
 // development and will use Embed to embed the migrations into the binary for production
@@ -107,7 +107,7 @@ func Embed(fsys embed.FS) {
 //
 // In case a custom workflow is required, set DATABASE_MIGRATIONS env var configuration
 // to the desired path since it will always take precedence over everything else.
-func LoadAuto(cfg *config.Source) ([]Migration, error) {
+func LoadAuto(cfg *config.Source, extras ...Source) ([]Migration, error) {
 	migPath, ok := config.GetOK(cfg, MigrationPathConfig)
 	if ok {
 		// if the env var is set, but there are no migrations, we let it errors because it's
@@ -129,14 +129,22 @@ func LoadAuto(cfg *config.Source) ([]Migration, error) {
 		return migrations, nil
 	}
 
-	// last chance, look for embedded migrations
-	if len(embeddedMigrations) == 0 {
-		return nil, ErrNoMigrations
-	}
-
-	var all []Migration
+	// last chance, look at the embedded tier: globally-registered embeds plus any
+	// explicitly-passed sources
+	srcs := make([]Source, 0, len(embeddedMigrations)+len(extras))
 	for _, fsys := range embeddedMigrations {
-		part, err := Load(FromFS(fsys))
+		srcs = append(srcs, FromFS(fsys))
+	}
+	srcs = append(srcs, extras...)
+	return Collect(srcs...)
+}
+
+// Collect union-merges migrations from all the given sources, sorted by name. A source
+// yielding no migrations is skipped; an empty union is ErrNoMigrations.
+func Collect(srcs ...Source) ([]Migration, error) {
+	var all []Migration
+	for _, src := range srcs {
+		part, err := src()
 		if err != nil && !IsNoMigrations(err) {
 			return nil, err
 		}
@@ -145,6 +153,7 @@ func LoadAuto(cfg *config.Source) ([]Migration, error) {
 	if len(all) == 0 {
 		return nil, ErrNoMigrations
 	}
+
 	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
 	return all, nil
 }
