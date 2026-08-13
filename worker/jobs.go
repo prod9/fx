@@ -25,15 +25,24 @@ const (
 		CREATE INDEX IF NOT EXISTS idx_jobs_status_scheduled_at ON jobs(status, scheduled_at);
 		`
 
-	FindPendingJobByNameSQL = `
-		SELECT * FROM jobs
-		WHERE name = $1
-			AND status = 'pending'
-		ORDER BY id DESC
-		LIMIT 1;`
 	ScheduleJobSQL = `
 		INSERT INTO jobs (name, status, payload, scheduled_at)
 		VALUES ($1, $2, $3, $4)
+		RETURNING *;`
+
+	// Insert-if-no-pending fused into one statement so two schedulers racing the same
+	// name cannot both pass a separate lookup. A sliver of a race remains under READ
+	// COMMITTED (two statements executing at the same instant see the same snapshot);
+	// accepted over a partial unique index, which would forbid legitimate duplicate
+	// pending jobs scheduled deliberately via ScheduleAt.
+	ScheduleJobIfNotExistsSQL = `
+		INSERT INTO jobs (name, status, payload, scheduled_at)
+		SELECT $1, $2, $3, $4
+		WHERE NOT EXISTS (
+			SELECT 1 FROM jobs
+			WHERE name = $1
+				AND status = $2
+		)
 		RETURNING *;`
 
 	// we could use FOR UPDATE locks but this means the "processing" status
@@ -93,20 +102,6 @@ func ensureJobsTable(ctx context.Context) error {
 	return data.Exec(ctx, CreateJobsTableSQL)
 }
 
-func findPendingJobByName(ctx context.Context, name string) (*Job, error) {
-	if err := ensureJobsTable(ctx); err != nil {
-		return nil, err
-	}
-
-	job := &Job{}
-	err := data.Get(ctx, job, FindPendingJobByNameSQL, name)
-	if err != nil {
-		return nil, err
-	} else {
-		return job, nil
-	}
-}
-
 func scheduleJob(ctx context.Context, name string, payload []byte, t time.Time) (*Job, error) {
 	if err := ensureJobsTable(ctx); err != nil {
 		return nil, err
@@ -117,6 +112,27 @@ func scheduleJob(ctx context.Context, name string, payload []byte, t time.Time) 
 
 	job := &Job{}
 	err := data.Get(ctx, job, ScheduleJobSQL,
+		name, PendingStatus, string(payload), t,
+	)
+	if err != nil {
+		return nil, err
+	} else {
+		return job, nil
+	}
+}
+
+// scheduleJobIfNotExists returns data's no-rows error when a pending job with the same
+// name already exists.
+func scheduleJobIfNotExists(ctx context.Context, name string, payload []byte, t time.Time) (*Job, error) {
+	if err := ensureJobsTable(ctx); err != nil {
+		return nil, err
+	}
+	if t.IsZero() {
+		t = time.Now()
+	}
+
+	job := &Job{}
+	err := data.Get(ctx, job, ScheduleJobIfNotExistsSQL,
 		name, PendingStatus, string(payload), t,
 	)
 	if err != nil {

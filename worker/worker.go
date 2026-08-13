@@ -73,13 +73,23 @@ func ScheduleInIfNotExists(ctx context.Context, job Interface, d time.Duration) 
 	return ScheduleAtIfNotExists(ctx, job, time.Now().Add(d))
 }
 func ScheduleAtIfNotExists(ctx context.Context, job Interface, t time.Time) (int64, error) {
-	// TODO: Might need to be careful with transactions here
-	_, err := findPendingJobByName(ctx, job.Name())
-	if data.IsNoRows(err) {
-		return ScheduleAt(ctx, job, t)
-	} else {
-		return 0, ErrJobExists
+	payload, err := json.Marshal(job)
+	if err != nil {
+		return 0, err
 	}
+
+	scheduled, err := scheduleJobIfNotExists(ctx, job.Name(), payload, t)
+	if data.IsNoRows(err) {
+		return 0, ErrJobExists
+	} else if err != nil {
+		return 0, err
+	}
+
+	fxlog.Log("scheduling",
+		fxlog.String("job", job.Name()),
+		fxlog.Time("at", t),
+	)
+	return scheduled.ID, nil
 }
 
 func ScheduleNow(ctx context.Context, job Interface) (int64, error) {
