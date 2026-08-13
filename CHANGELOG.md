@@ -1,6 +1,17 @@
 # Changelog
 
-## v0.10.1
+## v0.10.2
+
+* **pubsub:** Pluggable internal drivers, selected by `PUBSUB_URL` scheme. Unset or
+  `postgres://` keeps the existing LISTEN/NOTIFY backend; `redis://`/`rediss://` routes
+  the same typed API over Redis Pub/Sub instead — useful when Postgres connection
+  headroom is tight or a Redis is already in the topology. Public API is unchanged;
+  there are no user-facing extension points. See `docs/spec/pubsub-redis.md`.
+* **clients:** New `clients/redis` package — the single place FX dials Redis. Hands out
+  one memoized `*redis.Client` per URL so pubsub, cache, and app code share a
+  connection pool instead of each dialing their own.
+* **cache:** The Redis cache now obtains its client from `clients/redis`; disconnecting
+  a cache no longer closes the underlying client other subsystems may share.
 
 * **data:** `CreateDB`/`DropDB` now close their admin connection. Previously each call
   leaked an idle connection to the default database for the life of the process, which
