@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	redisclient "fx.prodigy9.co/clients/redis"
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/fxlog"
 	goredis "github.com/redis/go-redis/v9"
@@ -78,9 +79,9 @@ func (r *redis[T]) fallback(ctx context.Context, initer Initializer[T], err erro
 		return
 	}
 
-	// client seems to be faulty, try to disconnect in the background so we re-connect
-	// again on the next request
-	go r.disconnect(context.Background())
+	// client seems to be faulty; drop our reference so we re-acquire and re-ping on the
+	// next request
+	r.disconnect()
 	fxlog.Errorf("redis cache: %w", err)
 	result, _, outerr = initer()
 	return
@@ -104,12 +105,11 @@ func (r *redis[T]) connect(ctx context.Context) error {
 		return nil
 	}
 
-	opts, err := goredis.ParseURL(config.Get(r.cfg, RedisURLConfig))
+	client, err := redisclient.Client(config.Get(r.cfg, RedisURLConfig))
 	if err != nil {
 		return err
 	}
 
-	client := goredis.NewClient(opts)
 	if _, err := client.Ping(ctx).Result(); err != nil {
 		return err
 	} else {
@@ -118,14 +118,13 @@ func (r *redis[T]) connect(ctx context.Context) error {
 	}
 }
 
-func (r *redis[T]) disconnect(ctx context.Context) error {
+// disconnect drops the cache's reference so the next request re-acquires and re-pings.
+// The client itself is shared, owned by clients/redis, and never closed here; go-redis
+// discards broken connections from its pool on its own.
+func (r *redis[T]) disconnect() {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	if r.redis == nil {
-		return nil
-	} else {
-		return r.redis.Close()
-	}
+	r.redis = nil
 }
 
 func (r *redis[T]) get(ctx context.Context) (result T, err error) {
