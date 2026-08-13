@@ -20,10 +20,11 @@ var collectMigrationsCmd = &cobra.Command{
 
 func runCollectMigrationsCmd(cmd *cobra.Command, args []string) {
 	var (
-		ctx, _ = cmdutil.NewDataContext()
-		prompt = prompts.New(config.FromContext(ctx), args)
-		outdir = prompt.Str("output dir")
+		ctx, _, cleanup = cmdutil.NewDataContext()
+		prompt          = prompts.New(config.FromContext(ctx), args)
+		outdir          = prompt.Str("output dir")
 	)
+	defer cleanup()
 
 	migrations, err := migrator.LoadAuto(config.FromContext(ctx))
 	if err != nil {

@@ -26,7 +26,8 @@ var PingerCmd = &cobra.Command{
 }
 
 func runPinger(cmd *cobra.Command, args []string) {
-	ctx, _ := cmdutil.NewDataContext()
+	ctx, _, cleanup := cmdutil.NewDataContext()
+	defer cleanup()
 	ctx, cancel := context.WithCancel(ctx)
 	ctrlc.Do(cancel)
 

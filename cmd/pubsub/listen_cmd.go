@@ -18,7 +18,8 @@ var listenCmd = &cobra.Command{
 }
 
 func runListenCmd(cmd *cobra.Command, args []string) {
-	ctx, _ := cmdutil.NewDataContext()
+	ctx, _, cleanup := cmdutil.NewDataContext()
+	defer cleanup()
 
 	cancels := make([]context.CancelFunc, 0, len(args))
 	for _, name := range args {

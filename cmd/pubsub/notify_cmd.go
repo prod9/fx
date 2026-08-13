@@ -15,7 +15,8 @@ var notifyCmd = &cobra.Command{
 }
 
 func runNotifyCmd(cmd *cobra.Command, args []string) {
-	ctx, _ := cmdutil.NewDataContext()
+	ctx, _, cleanup := cmdutil.NewDataContext()
+	defer cleanup()
 
 	if err := fxpubsub.PublishRaw(ctx, args[0], args[1]); err != nil {
 		fxlog.Fatalf("pubsub notify: %w", err)

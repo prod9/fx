@@ -26,9 +26,10 @@ func init() {
 
 func runResyncMigrationsCmd(cmd *cobra.Command, args []string) {
 	var (
-		ctx, mig = cmdutil.NewMigratorContext()
-		prompt   = prompts.New(config.FromContext(ctx), args)
+		ctx, mig, cleanup = cmdutil.NewMigratorContext()
+		prompt            = prompts.New(config.FromContext(ctx), args)
 	)
+	defer cleanup()
 
 	plans, dirty, err := mig.Plan(ctx, migrator.IntentResync)
 	if err != nil {

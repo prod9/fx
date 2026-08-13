@@ -17,7 +17,8 @@ var PongerCmd = &cobra.Command{
 }
 
 func runPonger(cmd *cobra.Command, args []string) {
-	ctx, _ := cmdutil.NewDataContext()
+	ctx, _, cleanup := cmdutil.NewDataContext()
+	defer cleanup()
 	ctx, cancel := context.WithCancel(ctx)
 	ctrlc.Do(cancel)
 

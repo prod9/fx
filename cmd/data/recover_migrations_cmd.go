@@ -21,10 +21,11 @@ var recoverMigrationsCmd = &cobra.Command{
 
 func runRecoverMigrationsCmd(cmd *cobra.Command, args []string) {
 	var (
-		ctx, db = cmdutil.NewDataContext()
-		prompt  = prompts.New(config.FromContext(ctx), args)
-		outdir  = prompt.Str("output dir")
+		ctx, db, cleanup = cmdutil.NewDataContext()
+		prompt           = prompts.New(config.FromContext(ctx), args)
+		outdir           = prompt.Str("output dir")
 	)
+	defer cleanup()
 
 	migrations, err := migrator.Load(migrator.FromDB(ctx, db))
 	if err != nil {
