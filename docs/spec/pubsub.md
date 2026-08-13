@@ -1,23 +1,27 @@
-# Pub/Sub — Postgres LISTEN/NOTIFY
+# Pub/Sub — typed channels over pluggable drivers
 
-**Status:** accepted
+**Status:** accepted (driver layer: draft)
 
-The `pubsub` package is a typed pub/sub built on Postgres `LISTEN`/`NOTIFY`. FX apps are
-already locked into Postgres, so pub/sub comes from the database already running — no new
-broker, no NATS, no Redis. It sits next to `worker` and `cache` as a top-level package.
+The `pubsub` package is a typed pub/sub with a pluggable backend. The default backend is
+Postgres `LISTEN`/`NOTIFY` ([`pubsub-postgres.md`](pubsub-postgres.md)) — no new broker,
+pub/sub comes from the database already running. A Redis driver
+([`pubsub-redis.md`](pubsub-redis.md)) ships alongside it for deployments that already
+run Redis, and the driver seam is public so an app can plug in anything else (NATS, an
+in-memory fake for tests) without FX shipping it. It sits next to `worker` and `cache` as
+a top-level package.
 
 A channel is declared once at package scope, generic over its payload type — the
 `config.*Var` pattern — so publish and subscribe are type-checked end to end. `Subscribe`
-hands the app a native Go channel to `for range` over, backed by one dedicated `LISTEN`
-connection; the package hides the connection, the goroutine, and reconnection.
+hands the app a native Go channel to `for range` over; the package hides the connection,
+the goroutine, and reconnection.
 
 It is a **latency optimization over polling, not a delivery guarantee.** Apps stay correct
 without it and merely react faster with it; the package adds no reliability machinery on
-top of Postgres. Anything needing guaranteed delivery uses `worker`, not `pubsub`.
+top of the backend. Anything needing guaranteed delivery uses `worker`, not `pubsub`.
 
-The model is deliberately flat: **one `Subscribe` = one connection = one channel**, with
-Postgres doing cross-subscriber fan-out natively (§4). Two application modes drive the
-shape, both first-class:
+The model is deliberately flat: **one `Subscribe` = one backend subscription = one
+channel**, with the backend doing cross-subscriber fan-out natively. Two application modes
+drive the shape, both first-class:
 
 - **Stand-alone listener** — a consumer process that ranges over notifications and acts,
   the pull-based analog of today's polling `worker`.
@@ -26,35 +30,36 @@ shape, both first-class:
 
 ## The governing constraint — signaling, not a queue
 
-`NOTIFY` is ephemeral, at-most-once:
+Every sanctioned driver is ephemeral, at-most-once. The portable contract — the floor an
+app may rely on regardless of driver — is:
 
-- Dropped if no session is currently listening — never persisted.
+- Dropped if no subscriber is currently listening — never persisted.
 - Dropped during any reconnect gap (a connection blip loses messages).
+- Dropped to a consumer that can't keep up (§5).
 - Payload must be **under 8000 bytes** (`< 8000`; the limit is exclusive).
-- Delivered only on transaction commit; an aborted tx sends nothing.
-- Ordered per channel — but *at Postgres*: send order within a tx, commit order across
-  tx. This is a property of the server queue, not a guarantee the consumer sees, since
-  `pubsub` drops to slow consumers and reconnects across blips (§4, §5).
-- De-duplicated within a single transaction: identical `(channel, payload)` notifications
-  raised more than once in one tx are collapsed to one delivery.
-- Scoped to one **database**: `NOTIFY` never crosses databases, so per-environment DBs
-  (dev / staging / prod on separate databases) are fully isolated with no channel-name
-  coordination needed.
+- Channel names are plain identifiers of at most 63 bytes (§1).
+
+The two limits originate in the Postgres driver (see
+[`pubsub-postgres.md`](pubsub-postgres.md)) and are enforced uniformly on every driver so
+channel declarations stay portable — a driver swap can never break a name or a payload
+that worked before. Ordering, transaction-coupling, and de-duplication are
+**driver-specific extras**, documented in each driver's file; apps must not depend on
+them.
 
 It is **not** a durable job queue — that is `worker`. Design apps to use it as a
 *notification*, never as payload delivery (see Recommended usage).
 
 ## Recommended usage — a notification, not a delivery channel
 
-`pubsub` is rooted in Postgres's own mechanism and adds as little fail-safe on top as
-possible. Delivery is best-effort by contract; **correctness is the app's job**, designed
-around two rules.
+`pubsub` adds as little fail-safe on top of its backend as possible. Delivery is
+best-effort by contract; **correctness is the app's job**, designed around two rules.
 
 **1. Publish out-of-band from the business write.** Commit the state change in its own
-transaction, then publish *after* it — not inside it. A full notify queue makes `NOTIFY`
-fail at commit (§5); coupling it into the business tx would let that roll back real data.
-Only publish inside the business tx when missing the notification is genuinely worse than
-failing the write — rare.
+transaction, then publish *after* it — not inside it. Publishing is not transactional in
+general (on most drivers it fires immediately), and on the Postgres driver a publish
+coupled into the business tx can even roll back real data (see
+[`pubsub-postgres.md`](pubsub-postgres.md)). Publishing after the commit is the one
+ordering that is correct on every driver.
 
 ```go
 if err := data.Run(ctx, saveOrder); err != nil {   // durable change commits first
@@ -101,15 +106,6 @@ cursor additionally *skip* already-seen rows as an optimization, but the full wi
 stays the correctness floor. Because the consumer re-derives from the table, payloads stay
 tiny — an id, or nothing — which also keeps clear of the size limit.
 
-## Why the existing surfaces don't fit as-is
-
-- `data` exposes only the pooled `*sqlx.DB` and an always-in-a-transaction `Scope`
-  (`data/scope.go`). A listener must hold one connection open and block on it, outside any
-  transaction — the pooled/tx model cannot express that. The connection still comes from
-  the pool `data.Connect` builds (§4); no new connection API is needed.
-- `worker` polls on a timer and holds no connection between polls (`worker/worker.go`) — a
-  useful CLI template, the wrong connection model.
-
 ## Design
 
 ### 1. Channels — declared once, typed, immutable descriptors
@@ -139,14 +135,13 @@ handle. Channels are declared at package scope and named after the var that hold
 keeps no registry and does no duplicate-detection. Payloads ride the wire as JSON of `T`;
 that boundary is the one sanctioned `any`-shaped seam.
 
-**Channel names are Postgres identifiers.** `LISTEN` / `NOTIFY` cannot parameterize the
-channel name, so `NewChannel` validates the name as a plain identifier (letters, digits,
-underscore) up front — a default-deny check that closes the only injection seam in the
-package. Note Postgres truncates identifiers at 63 bytes (`NAMEDATALEN`): two names
-sharing a 63-byte prefix silently collide onto one channel, so keep names short and
-distinct.
+**Channel names are plain identifiers** (letters, digits, underscore; at most 63 bytes)
+on every driver — the rule's origin and rationale live in
+[`pubsub-postgres.md`](pubsub-postgres.md). Enforcing it uniformly means a channel
+declaration is portable and a driver swap can never introduce a collision or an injection
+surface.
 
-### 2. Publish — rides the transaction
+### 2. Publish
 
 ```go
 func Publish[T any](ctx context.Context, ch Channel[T], payload T) error
@@ -155,17 +150,16 @@ func PublishRaw(ctx context.Context, name string, payload string) error
 
 `Publish` marshals `payload` to JSON and delegates to `PublishRaw`, the untyped floor that
 takes a channel name and a pre-marshaled payload — for the CLI and any caller holding a
-name and a string rather than a typed channel. The floor is `string`, not `[]byte`,
-because a Postgres `NOTIFY` payload is a `text` column; a caller with binary data encodes
-it (base64, hex) into text itself. Both enforce the same size limit and tx behavior.
-`ctx` leads, per Go convention. Publish runs through the existing `data.Exec` path on the
-pooled connection, so it rides whatever tx context it is called in: inside `data.Run(...)`
-it joins the parent tx and fires on that commit; called on its own it runs a
-`BEGIN` / `pg_notify` / `COMMIT` of its own (three round-trips) and fires on that commit.
-Prefer the out-of-band form, after the business commit (Recommended usage rule 1) — since
-coupling a `NOTIFY` into the business tx lets a full notify queue roll it back. The
-marshaled payload must be under 8000 bytes, else `Publish` returns an error. No schema, no
-migration.
+name and a string rather than a typed channel. The floor is `string`, not `[]byte` (a
+Postgres-rooted choice — see [`pubsub-postgres.md`](pubsub-postgres.md)); a caller with
+binary data encodes it (base64, hex) into text itself. `ctx` leads, per Go convention.
+`PublishRaw` validates the name and the size limit, then hands the send to the resolved
+driver (§4). The marshaled payload must be under 8000 bytes, else `Publish` returns an
+error. No schema, no migration.
+
+Whether a publish rides an ambient transaction is driver-specific — the Postgres driver
+joins the tx context it is called in; others fire immediately. Apps follow Recommended
+usage rule 1 and never depend on either behavior.
 
 ### 3. Subscribe — a bare typed channel, its cancel, and a connect error
 
@@ -174,18 +168,18 @@ func Subscribe[T any](ctx context.Context, ch Channel[T]) (<-chan T, context.Can
 func SubscribeRaw(ctx context.Context, name string) (<-chan string, context.CancelFunc, error)
 ```
 
-`SubscribeRaw` is the untyped floor: it opens the dedicated connection, issues `LISTEN`,
-and streams the payload text — for the CLI and name-based callers. `Subscribe` wraps it,
-decoding each payload into `T` and feeding the returned typed channel. **The initial connect and `LISTEN` are synchronous: if either fails — including a
-connection-cap block or Postgres "too many clients" (§4) — `Subscribe` returns the error
-rather than a live channel**, so the failure surfaces loud at the callsite instead of a
-silent never-delivering stream.
+`SubscribeRaw` is the untyped floor: it validates the name and hands the subscription to
+the resolved driver (§4), which streams the payload text — for the CLI and name-based
+callers. `Subscribe` wraps it, decoding each payload into `T` and feeding the returned
+typed channel. **The initial connect and subscribe are synchronous: if either fails,
+`Subscribe` returns the error rather than a live channel**, so the failure surfaces loud
+at the callsite instead of a silent never-delivering stream.
 
 On success it returns the channel **and** its cancel, so the caller never builds a
-cancellable context of their own. A subscription owns its connection alone, so its whole
-lifetime is one context: cancelling — via the passed `ctx` (a websocket request dying on
-disconnect) or the returned `cancel` — stops the loop, closes the channel, and releases
-the connection.
+cancellable context of their own. A subscription owns its backend resources alone, so its
+whole lifetime is one context: cancelling — via the passed `ctx` (a websocket request
+dying on disconnect) or the returned `cancel` — stops the loop, closes the channel, and
+releases the resources.
 
 The channel carries bare `T` — no wrapper, no gap signal, no per-message error. That is
 the point: `pubsub` is a latency optimization, not a delivery guarantee, and the app is
@@ -193,116 +187,137 @@ built so missed notifications never cost correctness (Recommended usage). A payl
 fails to decode into `T` is logged and skipped; the consumer is unaffected because it
 re-derives from the table and never had to trust the payload.
 
-`cancel()` is safe mid-range and idempotent — the loop goroutine is the sole sender and
-closes the channel only after `WaitForNotification` unblocks on the cancelled context, so
-a consumer-initiated cancel never races a send. `break` after `cancel()` to stop at once;
+`cancel()` is safe mid-range and idempotent — the driver's loop goroutine is the sole
+sender and closes the channel only after its wait unblocks on the cancelled context, so a
+consumer-initiated cancel never races a send. `break` after `cancel()` to stop at once;
 otherwise the range ends when the close propagates. A CLI wires the same cancel to CTRL-C
 with `ctrlc.Do(cancel)` — no `context.WithCancel` of its own.
 
 **A subscription must be cancelled.** Abandoning the range without calling `cancel` (and
-without the `ctx` being cancelled) leaks the loop goroutine *and* its held Postgres
-connection for the life of the process — the connection is never returned to the pool.
-`defer cancel()` right after a successful `Subscribe` is the standing pattern.
+without the `ctx` being cancelled) leaks the loop goroutine *and* whatever backend
+resource it holds (a Postgres connection; a Redis subscription) for the life of the
+process. `defer cancel()` right after a successful `Subscribe` is the standing pattern.
 
 **Websockets:** after `Hijack()`, the request's `r.Context()` is no longer cancelled on
 client disconnect — the server stops managing the connection. The read loop is the
 disconnect detector, so the handler must call the returned `cancel` when the socket read
 fails, rather than relying on `r.Context()` to tear the subscription down.
 
-### 4. One connection per subscription — Postgres does the fan-out
+### 4. Drivers — one seam, resolved from config
 
-Each `Subscribe` pulls one dedicated connection from the pool `data.Connect` already
-produced (`db.Conn(ctx)`) and holds it for the subscription's life, listening on it with
-`WaitForNotification` — no `data.Dial` / new connection API. Reusing the one pool keeps
-connection accounting honest: subscriptions draw against the same `DATABASE_MAX_OPEN`
-budget as every other query, rather than hiding
-in a shadow pool that makes the configured limit lie. The DB comes from the `data`
-context, so there is no process-wide service to register: websocket handlers already have
-it on the request context, and a stand-alone command builds a data context the way other
-offline commands do.
+The backend seam sits exactly at the untyped floor. Everything above it — `Channel[T]`,
+JSON codec, name and payload validation — is driver-agnostic; everything below it is one
+small interface:
 
-Cross-subscriber fan-out is Postgres's job: every connection `LISTEN`ing on a channel
-receives every `NOTIFY`, so N subscribers are N connections and the database delivers to
-all. The package builds no in-memory fan-out this phase.
+```go
+type Driver interface {
+    // Publish sends payload on the named channel, best-effort, at-most-once.
+    Publish(ctx context.Context, channel, payload string) error
 
-On a `WaitForNotification` error the loop distinguishes a cancelled context (a clean
-shutdown — stop and release) from a dropped connection (reconnect with tight backoff and
-re-`LISTEN`). Reconnect is silent: the blip's gap is invisible to the consumer, which the
-app's re-scan (Recommended usage) already covers. Reconnect is liveness, not a reliability
-upgrade — it resumes listening, it does not recover the messages missed during the outage.
-Before a connection is released back to the pool the subscription issues `UNLISTEN *`, so
-a reused connection never carries a stale registration into its next borrower.
+    // Subscribe streams payloads on the named channel until ctx is cancelled or the
+    // returned cancel is called. The initial connect is synchronous: on failure it
+    // returns the error, never a live channel. The implementation must reconnect
+    // silently across connection loss, drop (never block) on a slow consumer, and
+    // close the returned channel only after its loop has fully stopped.
+    Subscribe(ctx context.Context, channel string) (<-chan string, context.CancelFunc, error)
+}
+```
 
-**Cost — connection count equals active subscriptions.** One subscription is one Postgres
-backend (~5–10 MB of server memory each), so the practical ceiling is **low hundreds**,
-bounded by `max_connections` and `DATABASE_MAX_OPEN`. A handful of stand-alone consumers
-is nothing; thousands of websocket clients is thousands of connections and does not fit
-this model. High websocket concurrency waits on the deferred in-process multiplexing
-(Future work) or moves to a real broker (NATS) — not raw Postgres `LISTEN`.
+The seam is at the raw string level, not the typed level, because Go interfaces cannot
+carry generic methods — and because everything generic is codec work that no driver should
+duplicate. Names and payloads arrive at the driver already validated.
 
-Because subscriptions share the pool, an app that runs them **must** budget for them.
-`DATABASE_MAX_OPEN` defaults to `64` (see Configuration) precisely so a subscription
-cannot exhaust an unbounded pool; size it against expected subscription count plus normal
-query load.
+**Resolution.** `PublishRaw` and `SubscribeRaw` resolve their driver per call, in order:
 
-### 5. Backpressure — Postgres's semantics, not our subsystem
+1. A driver injected with `pubsub.WithDriver(ctx, d)` — direct override, bypassing config.
+   This is also the test seam: an in-memory `Driver` fake needs no database and no config.
+2. `PUBSUB_URL` from the config source on `ctx` — the primary configuration method. The
+   URL's scheme selects the driver via the registry (below); the rest of the URL is the
+   driver's to interpret. Mirrors `STORAGE_URL`.
+3. Unset — the Postgres driver over the ambient `data` context. This is the
+   zero-configuration default and exactly the pre-driver behavior, so existing apps need
+   no change.
+
+Drivers resolved from `PUBSUB_URL` are constructed lazily and cached per-process per-URL
+(the `cache.Redis` / `blobstore.Client` pattern), so resolution on the hot path is a map
+lookup, not a dial.
+
+**Registry.** Schemes map to driver factories in a package-level registry:
+
+```go
+func RegisterScheme(scheme string, factory func(cfg *config.Source, u *url.URL) (Driver, error))
+```
+
+`postgres` and `redis` are pre-registered. An app plugs in its own backend by registering
+a scheme at init and pointing `PUBSUB_URL` at it — FX ships no NATS driver, because an app
+already committed to NATS should usually use the NATS client directly rather than
+flattening it to this at-most-once contract; the registry exists for the app that wants
+FX's typed-channel surface over its own transport anyway. An unknown scheme is a
+resolution error, surfaced by the first publish or subscribe.
+
+### 5. Backpressure — drop to the slow consumer, never block the loop
 
 No custom buffering policy: no `PUBSUB_*` buffer knob, no drop metric, no gap signal, no
-coalescing or keep-newest contract. The loop always drains the connection and sends to the
+coalescing or keep-newest contract. Every driver drains its backend and sends to the
 consumer non-blocking; a consumer that can't keep up silently misses messages — the same
-at-most-once contract Postgres has when no one is listening, and covered by the app's
+at-most-once contract the backend has when no one is listening, and covered by the app's
 re-scan.
 
-Blocking the loop to force true Postgres-side backpressure is rejected as a process-wide
-footgun. If a subscription stops reading its connection, notifications back up in
-Postgres's single shared server-side async queue; once that global queue fills, **every
-`NOTIFY` transaction fails at commit, across all channels and sessions**
-(`pg_notification_queue_usage()` warns as it approaches). One stalled consumer must never
-fail unrelated publishers, so the loop drains always and drops to the slow consumer.
+Blocking the loop to force backend-side backpressure is rejected as a process-wide
+footgun — on the Postgres driver a blocked loop can fail unrelated publishers outright
+(see [`pubsub-postgres.md`](pubsub-postgres.md)). One stalled consumer must never fail
+unrelated publishers, so every driver drains always and drops to the slow consumer, and
+the consumer-visible contract doesn't shift under a driver swap.
 
-What this costs the caller is understanding the Postgres channel contract by convention —
-keep transactions short, keep consumers fast, treat delivery as best-effort — which this
-spec documents rather than the package hides.
+What this costs the caller is understanding the at-most-once contract by convention —
+keep consumers fast, treat delivery as best-effort — which this spec documents rather
+than the package hides.
+
+## Drivers
+
+| Scheme     | Doc                                        | Summary                                                        |
+|------------|--------------------------------------------|----------------------------------------------------------------|
+| *(unset)*  | [`pubsub-postgres.md`](pubsub-postgres.md) | Default. `LISTEN`/`NOTIFY` over the ambient `data` context.    |
+| `redis`    | [`pubsub-redis.md`](pubsub-redis.md)       | Redis PUB/SUB; websocket-scale subscription counts.            |
+| *(custom)* | —                                          | App-registered via `RegisterScheme`; must honor §4's contract. |
 
 ## Configuration
 
-`pubsub` adds no config vars of its own. It depends on one `data` setting:
-
-* `DATABASE_MAX_OPEN` — maximum open pooled connections, default `64`. Each active
-  subscription holds one connection from this pool for its lifetime, so this value is the
-  hard ceiling on concurrent subscriptions plus in-flight queries. The default replaces
-  the previous unlimited (`-1`) setting with an explicit, honest budget; raising it is a
-  deliberate capacity decision bounded by Postgres `max_connections`.
-
-> This default change lives in `data` (`data/data.go`), blast radius = every FX app, and
-> ships with the `pubsub` implementation.
+* `PUBSUB_URL` — driver selection, default empty (Postgres over the `data` context). The
+  scheme picks the driver from the registry; the remainder is driver-defined. Declared in
+  `pubsub` next to its consumer, per the config philosophy.
+* `DATABASE_MAX_OPEN` (`data`) — under the Postgres driver, the hard ceiling on concurrent
+  subscriptions plus in-flight queries; see [`pubsub-postgres.md`](pubsub-postgres.md).
 
 ## Operational — debugging is first-class
 
 A `pubsub` cobra command group mirroring `store`:
 
-| Command                        | Purpose                                                         |
-|--------------------------------|----------------------------------------------------------------|
-| `pubsub notify <channel> <payload>` | Publish from the CLI.                                      |
-| `pubsub listen <channel>...`   | Subscribe and print to stdout; also the reference stand-alone consumer. |
+| Command                             | Purpose                                                                 |
+|-------------------------------------|-------------------------------------------------------------------------|
+| `pubsub notify <channel> <payload>` | Publish from the CLI.                                                   |
+| `pubsub listen <channel>...`        | Subscribe and print to stdout; also the reference stand-alone consumer. |
 
 The CLI operates on channel *names* as strings — the untyped floor beneath the typed
-`Channel[T]` layer — since a command line has no compile-time `T`. The typed API is the
-sanctioned path for application code; the string path exists for this debug surface.
+`Channel[T]` layer — since a command line has no compile-time `T`. It resolves its driver
+the same way application code does (§4), so `PUBSUB_URL=redis://… go run . pubsub listen x`
+debugs the Redis path with no extra flags. The typed API is the sanctioned path for
+application code; the string path exists for this debug surface.
 
 `pubsub` ships no metrics or counters subsystem: delivery is best-effort and silent by
-design, and the CLI plus Postgres's own `pg_notification_queue_usage()` are the
-introspection surface. Adding counters is explicitly out of scope — there is no reliable
-number to report under an at-most-once contract, and the app's re-scan is where
-correctness is observed.
+design, and the CLI plus each backend's own introspection (listed in each driver's doc)
+are the surface. Adding counters is explicitly out of scope — there is no reliable number
+to report under an at-most-once contract, and the app's re-scan is where correctness is
+observed.
 
 ## Testing
 
-The typed marshal layer and channel-name validation are unit-testable without a
-database. Publish/subscribe round-trips test against a real Postgres (`fxtest`
-`ConnectTestDatabase`), asserting best-effort delivery under a live listener and the
-documented drop under a stalled consumer — not exactly-once, which the contract does not
-promise.
+The typed marshal layer, channel-name validation, and driver resolution are unit-testable
+without a backend — resolution against an in-memory `Driver` injected via `WithDriver`.
+Postgres round-trips test against a real Postgres (`fxtest` `ConnectTestDatabase`);
+Redis round-trips against a real Redis where available, skipped otherwise. Both assert
+best-effort delivery under a live listener and the documented drop under a stalled
+consumer — not exactly-once, which the contract does not promise.
 
 **Payload evolution across deploys:** because payloads are JSON of `T` and old and new
 binaries can run concurrently during a rollout, treat `T` like any wire schema — add
@@ -312,30 +327,25 @@ resilient to a payload it can't fully decode anyway.
 
 ## Future work (out of scope this phase)
 
-- **Connection multiplexing / in-process fan-out** — a shared per-process connection that
-  `LISTEN`s once per channel and fans out in memory to many subscribers, so
-  websocket-scale consumer counts stop mapping 1:1 to Postgres connections. Deferred until
-  the usage pattern is real. Note `PgBouncer` is not the escape valve: transaction /
-  statement pooling disables `LISTEN`/`NOTIFY` entirely, and session pooling pins one
-  server connection per client — zero multiplexing either way.
 - **Dynamic channel names** — per-tenant `orders:42` / per-user `user:7` don't fit a
-  static declaration. Options, undecided: a `pubsub.Bind(ch, suffix)` returning a same-`T`
-  channel on `name:suffix`, or a lower-level string subscribe beneath the typed layer.
-  Under the flat model these are just more subscriptions, so this rides on the
-  multiplexing work above.
+  static declaration. Options, undecided: a `pubsub.Bind(ch, suffix)` returning a
+  same-`T` channel on `name:suffix`, or a lower-level string subscribe beneath the typed
+  layer. Under the flat model these are just more subscriptions.
 - **`Fanout` helper** — `pubsub.Fanout(ch)` splitting one subscribed stream to several
   in-process consumers. Consumer-side sugar on `Subscribe`; shape depends on a
   pattern-of-use we haven't seen. Deferred.
+- Driver-specific future work (e.g. Postgres connection multiplexing) lives in each
+  driver's doc.
 
 ## Philosophy check
 
 | Principle                    | How it holds                                                                          |
-|------------------------------|---------------------------------------------------------------------------------------|
+|------------------------------|----------------------------------------------------------------------------------------|
 | Modular by composition       | ships as a package of typed channel descriptors, not a bus                            |
-| Thin wrapper over primitives | wraps `pg_notify` + `WaitForNotification`; pg semantics surfaced, not hidden           |
-| Decentralized declaration    | channels declared at package scope like config vars, named after their var             |
-| Context as carry-bag         | publish and subscribe both read the ambient `data` context                            |
-| Everything optional          | no wiring for callers; no process-wide service to start                               |
-| Operational first-class      | `pubsub notify` / `listen` / `channels` subcommands                                   |
-| Punt distributed problems    | at-most-once documented; durability points at `worker`; fan-out leans on Postgres      |
-| Convention one layer deep    | one subscribe surface (a typed stream); no handler/callback variant to choose          |
+| Thin wrapper over primitives | wraps `pg_notify` / Redis PUB/SUB; backend semantics surfaced, not hidden             |
+| Decentralized declaration    | channels declared at package scope like config vars; `PUBSUB_URL` declared in-package |
+| Context as carry-bag         | driver override, config, and the default's DB all ride `ctx`                          |
+| Everything optional          | zero config = Postgres over the existing data context; no service to start            |
+| Operational first-class      | `pubsub notify` / `listen` work against whichever driver is configured                |
+| Punt distributed problems    | at-most-once documented; durability points at `worker`; fan-out leans on backend      |
+| Convention one layer deep    | one subscribe surface; one config var; registry is the single escape hatch            |
