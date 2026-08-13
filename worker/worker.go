@@ -106,10 +106,10 @@ func ScheduleAt(ctx context.Context, job Interface, t time.Time) (int64, error) 
 
 	if payload, err := json.Marshal(job); err != nil {
 		return 0, err
-	} else if job, err := scheduleJob(ctx, job.Name(), payload, t); err != nil {
+	} else if job_, err := scheduleJob(ctx, job.Name(), payload, t); err != nil {
 		return 0, err
 	} else {
-		return job.ID, nil
+		return job_.ID, nil
 	}
 }
 
