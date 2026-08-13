@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.10.3
+
+* **worker:** `Start` now closes its database pool when it returns; start/stop cycles
+  no longer leak one pool (and its idle connections) each.
+* **worker:** `ScheduleAtIfNotExists` (and its `Now`/`In` variants) check-and-insert in
+  a single atomic SQL statement, so concurrent schedulers of the same job name can no
+  longer both win the pending check.
+* **worker:** The spec (`docs/spec/workers.md`) now documents the package's lifecycle
+  stances: timeouts are the job's own decision, retries are job-side self-reschedule
+  (same pattern as recurring jobs), and job tracking is CAS on its own transactions,
+  isolated from job code.
+
 ## v0.10.2
 
 * **pubsub:** Pluggable internal drivers, selected by `PUBSUB_URL` scheme. Unset or
