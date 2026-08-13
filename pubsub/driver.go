@@ -59,6 +59,8 @@ func resolveDriver(ctx context.Context) (driver, error) {
 	switch u.Scheme {
 	case "postgres":
 		return postgresDriver{}, nil
+	case "redis", "rediss":
+		return newRedisDriver(rawURL)
 	default:
 		return nil, fmt.Errorf("%w: %q", ErrUnknownScheme, u.Scheme)
 	}

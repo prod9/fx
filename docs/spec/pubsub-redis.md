@@ -1,6 +1,6 @@
 # Pub/Sub driver: Redis PUB/SUB
 
-**Status:** draft
+**Status:** accepted
 
 The Redis driver for [`pubsub`](pubsub.md), active on `PUBSUB_URL=redis://…` (any URL
 `goredis.ParseURL` accepts, including `rediss://`). Built on native Redis PUB/SUB, which
@@ -8,10 +8,12 @@ has the identical at-most-once shape — no persistence, dropped when no one lis
 dropped across reconnects — so the portable contract transfers unchanged. For the app
 that already runs Redis, this moves pubsub traffic off the database's connection budget.
 
-- One `go-redis` client per process (lazily connected, the `cache.Redis` pattern); each
-  `Subscribe` opens one `*goredis.PubSub` on it. Redis connections are far cheaper than
-  Postgres backends, so the subscription ceiling is much higher — this is the sanctioned
-  driver for websocket-scale consumer counts.
+- One `go-redis` client per URL per process, acquired from `clients/redis` — the single
+  place FX dials Redis, shared with `cache` (the same URL in `REDIS_URL` and `PUBSUB_URL`
+  means one client, one pool). The client dials lazily on first command; each `Subscribe`
+  opens one `*goredis.PubSub` on it. Redis connections are far cheaper than Postgres
+  backends, so the subscription ceiling is much higher — this is the sanctioned driver
+  for websocket-scale consumer counts.
 - `go-redis` handles reconnect and resubscribe internally; the driver's loop only drains
   and forwards, dropping non-blocking to the consumer per the package-wide backpressure
   rule.
