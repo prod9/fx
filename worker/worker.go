@@ -254,7 +254,6 @@ func (w *Worker) workOnce(ctx context.Context) workerSignal {
 	return signalWorkDone
 }
 
-// TODO: Add more speciailized errors for signaling retries/rerun
 func (w *Worker) processJob(ctx context.Context, job *Job) error {
 	var instance Interface
 
@@ -271,9 +270,6 @@ func (w *Worker) processJob(ctx context.Context, job *Job) error {
 		return fmt.Errorf("malformed payload: %w", err)
 	}
 
-	// TODO: Enforce timeouts
-	// TODO: Better to run the job in a separate transaction. So the job state is not
-	// effected by the job code.
 	if err := instance.Run(ctx); err != nil {
 		return fmt.Errorf("run failed: %w", err)
 	} else {
