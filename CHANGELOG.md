@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.10.1
+
+* **data:** `CreateDB`/`DropDB` now close their admin connection. Previously each call
+  leaked an idle connection to the default database for the life of the process, which
+  exhausted postgres `max_connections` in test suites creating one database per test
+  (via `fxtest.ConnectTestDatabase`) and orphaned test databases when the cleanup drop
+  could no longer connect.
+* **cmd:** `cmdutil.NewDataContext`/`NewMigratorContext` return a third value — a
+  cleanup func that closes the connection pool. Callers defer it; one-shot CLI runs
+  behave the same, embedded or repeated use no longer leaks a pool per call.
+
 ## v0.10.0
 
 * **pubsub:** New `pubsub` package — a typed pub/sub built on Postgres LISTEN/NOTIFY.
