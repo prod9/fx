@@ -1,15 +1,15 @@
-// Package pubsub is a typed pub/sub built on Postgres LISTEN/NOTIFY. It is a latency
-// optimization over polling, not a delivery guarantee: NOTIFY is at-most-once and drops
-// when no session listens or across a reconnect gap. Apps stay correct by treating a
-// notification as "something changed, look now" and re-deriving from the table; anything
-// needing guaranteed delivery uses worker, not pubsub. See docs/spec/pubsub.md.
+// Package pubsub is a typed pub/sub over pluggable drivers — Postgres LISTEN/NOTIFY by
+// default, selected via PUBSUB_URL or an injected Driver. It is a latency optimization
+// over polling, not a delivery guarantee: every driver is at-most-once and drops when no
+// one listens or across a reconnect gap. Apps stay correct by treating a notification as
+// "something changed, look now" and re-deriving from the table; anything needing
+// guaranteed delivery uses worker, not pubsub. See docs/spec/pubsub.md.
 package pubsub
 
 import (
 	"errors"
 	"fmt"
 	"regexp"
-	"time"
 )
 
 const (
@@ -18,8 +18,6 @@ const (
 	// maxNameBytes is Postgres NAMEDATALEN: identifiers past it truncate and silently
 	// collide, so names are rejected rather than allowed to truncate.
 	maxNameBytes = 63
-	// reconnectDelay is the tight backoff between listen-connection reconnect attempts.
-	reconnectDelay = 1 * time.Second
 )
 
 var (

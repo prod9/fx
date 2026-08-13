@@ -4,16 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"fx.prodigy9.co/data"
 )
 
 // PublishRaw sends a pre-marshaled payload on a channel by name — the untyped floor
-// beneath Publish. It runs through data.Exec, so it rides whatever transaction context it
-// is called in: inside data.Run it joins the parent tx and fires on that commit; on its
-// own it runs a BEGIN/pg_notify/COMMIT of its own. Prefer publishing out-of-band, after
-// the business commit — coupling a NOTIFY into the business tx lets a full notify queue
-// roll it back.
+// beneath Publish. It validates the name and size limit, resolves the driver (WithDriver
+// → PUBSUB_URL → Postgres over the data context), and hands the send to it. Whether the
+// publish rides an ambient transaction is driver-specific; prefer publishing
+// out-of-band, after the business commit — the one ordering correct on every driver.
 func PublishRaw(ctx context.Context, name string, payload string) error {
 	if err := validateName(name); err != nil {
 		return err
@@ -22,7 +19,11 @@ func PublishRaw(ctx context.Context, name string, payload string) error {
 		return fmt.Errorf("%w: %d bytes", ErrPayloadTooLarge, len(payload))
 	}
 
-	return data.Exec(ctx, `SELECT pg_notify($1, $2)`, name, payload)
+	d, err := resolveDriver(ctx)
+	if err != nil {
+		return err
+	}
+	return d.Publish(ctx, name, payload)
 }
 
 // Publish marshals payload as JSON of T and sends it on ch. The JSON boundary is the one
