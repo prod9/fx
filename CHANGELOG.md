@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.10.4
+
+* **app/files:** The cleanup worker now supports configurable upload grace period,
+  sweep interval, and batch size via `FILES_UPLOAD_GRACE_PERIOD`,
+  `FILES_CLEANUP_INTERVAL`, and `FILES_CLEANUP_BATCH`; the `data cleanup` command can
+  run a full reconciliation sweep.
+* **app:** Public collectors expose an app tree's commands, jobs, HTTP fragment, and
+  embedded migrations for composing FX into a caller-owned root command.
+* **cmd/data:** Data commands can now be built with explicit migration sources through
+  `cmd.BuildDataCommand`, enabling app-fragment migration composition.
+
 ## v0.10.3
 
 * **worker:** `Start` now closes its database pool when it returns; start/stop cycles
