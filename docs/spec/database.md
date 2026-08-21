@@ -42,6 +42,14 @@ Once set up, there are basic methods to interact with the database:
 * `data.Run` — Runs a function inside a transaction (see Transactions section below).
 * `data.Prepare` — Prepares a statement and returns a `*sqlx.Stmt` object.
 
+### Query naming
+
+Domain query methods distinguish the shape of the result they serve. `List*` methods
+return paginated results intended for list endpoints. `Select*` methods return raw row
+slices for internal processing or composition. A domain filter may carry both query
+predicates and generic row-selection mechanics such as a limit and an ID cursor; those
+fields describe how rows are selected, not the policy of the caller using them.
+
 Example:
 
 ```go

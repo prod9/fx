@@ -20,9 +20,12 @@ const linkAge = 1 * time.Minute
 // App is the files fragment: the files metadata table plus the reconciliation worker
 // that prunes orphaned rows and objects. Mount it, then embed files.Controller(...)
 // into your own routes to expose upload/download endpoints.
+// TODO: Complete the files CLI with upload, download, list/search, and blobstore
+// inspection/check commands.
 var App = app.Build().
 	Name("files").
 	EmbedMigrations(migrations).
+	Command(cleanupCmd).
 	Job(CleanupJob)
 
 var ImageTypes = []string{

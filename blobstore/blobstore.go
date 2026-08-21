@@ -2,8 +2,10 @@ package blobstore
 
 import (
 	"context"
+	"net/http"
 
 	"fx.prodigy9.co/config"
+	"github.com/minio/minio-go/v7"
 )
 
 var (
@@ -23,4 +25,8 @@ func DeleteObject(ctx context.Context, key string) error {
 }
 func ObjectExists(ctx context.Context, key string) (bool, error) {
 	return DefaultClient.ObjectExists(ctx, key)
+}
+
+func IsNotFound(err error) bool {
+	return minio.ToErrorResponse(err).StatusCode == http.StatusNotFound
 }

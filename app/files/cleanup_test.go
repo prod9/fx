@@ -30,7 +30,8 @@ func TestRunCleanup(t *testing.T) {
 	defer srv.Close()
 
 	blobCfg := fxtest.Configure()
-	config.Set(blobCfg, blobstore.StorageURLConfig, "http://key:secret@"+mustHost(t, srv.URL)+"/filesbucket")
+	storageURL := "http://key:secret@" + mustHost(t, srv.URL) + "/filesbucket"
+	config.Set(blobCfg, blobstore.StorageURLConfig, storageURL)
 	blobstore.DefaultClient = blobstore.NewClient(blobCfg)
 
 	now := time.Now()
@@ -41,12 +42,30 @@ func TestRunCleanup(t *testing.T) {
 
 	putObject(t, srv.URL, healthy.RemotePath(), "payload")
 
-	require.NoError(t, runCleanup(ctx, now))
+	require.NoError(t, runCleanup(ctx, now, 24*time.Hour, 500))
 
 	require.False(t, fileExists(t, ctx, abandoned.ID), "abandoned upload must be pruned")
 	require.True(t, fileExists(t, ctx, healthy.ID), "row with a live object must survive")
 	require.True(t, fileExists(t, ctx, inFlight.ID), "in-flight upload must survive")
 	require.True(t, fileExists(t, ctx, preWindow.ID), "row older than the window is not probed")
+}
+
+func TestFileFilterApply(t *testing.T) {
+	createdAfter := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	createdBefore := createdAfter.Add(24 * time.Hour)
+	filter := FileFilter{
+		CreatedAfter:  createdAfter,
+		CreatedBefore: createdBefore,
+		AfterID:       41,
+	}
+
+	sql, args := filter.Apply("SELECT * FROM files", nil)
+
+	require.Equal(t,
+		"SELECT * FROM files WHERE created_at >= $1 AND created_at < $2 AND id > $3",
+		sql,
+	)
+	require.Equal(t, []any{createdAfter, createdBefore, int64(41)}, args)
 }
 
 func createFilesTable(t *testing.T, ctx context.Context) {
@@ -59,13 +78,30 @@ func createFilesTable(t *testing.T, ctx context.Context) {
 func insertFile(t *testing.T, ctx context.Context, id int64, createdAt time.Time) *File {
 	t.Helper()
 	f := &File{
-		ID: id, Kind: "avatar", OwnerType: "drop", OwnerID: 100,
-		OriginalName: "x", ContentType: "text/plain", ContentLength: 1, CreatedAt: createdAt,
+		ID:            id,
+		Kind:          "avatar",
+		OwnerType:     "drop",
+		OwnerID:       100,
+		OriginalName:  "x",
+		ContentType:   "text/plain",
+		ContentLength: 1,
+		CreatedAt:     createdAt,
 	}
 	require.NoError(t, data.Exec(ctx, `
-		INSERT INTO files (id, kind, owner_id, owner_type, original_name, content_type, content_length, created_at)
+		INSERT INTO files (
+			id, kind, owner_id, owner_type, original_name,
+			content_type, content_length, created_at
+		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		f.ID, f.Kind, f.OwnerID, f.OwnerType, f.OriginalName, f.ContentType, f.ContentLength, f.CreatedAt))
+		f.ID,
+		f.Kind,
+		f.OwnerID,
+		f.OwnerType,
+		f.OriginalName,
+		f.ContentType,
+		f.ContentLength,
+		f.CreatedAt,
+	))
 	return f
 }
 

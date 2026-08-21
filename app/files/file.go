@@ -2,7 +2,9 @@ package files
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"fx.prodigy9.co/blobstore"
@@ -11,6 +13,13 @@ import (
 )
 
 type (
+	FileFilter struct {
+		CreatedAfter  time.Time
+		CreatedBefore time.Time
+		AfterID       int64
+		Limit         int
+	}
+
 	FileKey struct {
 		Kind      string `json:"kind" db:"kind"`
 		OwnerType string `json:"owner_type" db:"owner_type"`
@@ -30,6 +39,55 @@ type (
 		CreatedAt     time.Time `json:"created_at" db:"created_at"`
 	}
 )
+
+func (f FileFilter) IsEmpty() bool {
+	return f.CreatedAfter.IsZero() && f.CreatedBefore.IsZero() && f.AfterID == 0
+}
+
+func (f FileFilter) Apply(sql string, args []any) (string, []any) {
+	conditions := []string{}
+	if !f.CreatedAfter.IsZero() {
+		args = append(args, f.CreatedAfter)
+		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", len(args)))
+	}
+	if !f.CreatedBefore.IsZero() {
+		args = append(args, f.CreatedBefore)
+		conditions = append(conditions, fmt.Sprintf("created_at < $%d", len(args)))
+	}
+	if f.AfterID > 0 {
+		args = append(args, f.AfterID)
+		conditions = append(conditions, fmt.Sprintf("id > $%d", len(args)))
+	}
+	if len(conditions) == 0 {
+		return sql, args
+	}
+
+	return sql + " WHERE " + strings.Join(conditions, " AND "), args
+}
+
+func SelectFiles(ctx context.Context, filter FileFilter) ([]*File, error) {
+	args := []any{}
+	sql := `SELECT * FROM files`
+	if !filter.IsEmpty() {
+		sql, args = filter.Apply(sql, args)
+	}
+
+	limit := filter.Limit
+	if limit < 0 {
+		limit = 500
+	}
+	if limit > 0 {
+		args = append(args, limit)
+		sql += ` ORDER BY id LIMIT $` + strconv.Itoa(len(args))
+	}
+
+	files := []*File{}
+	if err := data.Select(ctx, &files, sql, args...); err != nil {
+		return nil, err
+	} else {
+		return files, nil
+	}
+}
 
 func (f *File) PresignedGetURL(ctx context.Context) (string, error) {
 	return blobstore.PresignedGetURL(ctx, f.RemotePath(), blobstore.WithAge(linkAge))
@@ -115,7 +173,9 @@ func DestroyFile(ctx context.Context, key FileKey) (*File, error) {
 	}
 
 	if err := blobstore.DeleteObject(ctx, file.RemotePath()); err != nil {
-		return file, err
+		if !blobstore.IsNotFound(err) {
+			return file, err
+		}
 	}
 	return file, nil
 }
@@ -136,7 +196,9 @@ func DestroyUniqueFile(ctx context.Context, key FileKey) (*File, error) {
 	}
 
 	if err := blobstore.DeleteObject(ctx, file.RemotePath()); err != nil {
-		return file, err
+		if !blobstore.IsNotFound(err) {
+			return file, err
+		}
 	}
 	return file, nil
 }
