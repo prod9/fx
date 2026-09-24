@@ -45,20 +45,20 @@ func IsNotFound(err error) bool {
 func (cl *Client) Raw() *ts.Client { return cl.ts }
 
 func (cl *Client) CreateCollection(ctx context.Context, col Collection) error {
-	_, err := cl.ts.Collections().Create(ctx, &col.impl().schema)
+	_, err := cl.ts.Collections().Create(ctx, col.schema())
 	return err
 }
 func (cl *Client) DestroyCollection(ctx context.Context, col Collection) error {
-	_, err := cl.ts.Collection(col.Name()).Delete(ctx)
+	_, err := cl.ts.Collection(col.Name).Delete(ctx)
 	return err
 }
 func (cl *Client) Index(ctx context.Context, col Collection, obj any) error {
-	_, err := cl.ts.Collection(col.Name()).Documents().Upsert(ctx, obj, &tsapi.DocumentIndexParameters{})
+	_, err := cl.ts.Collection(col.Name).Documents().Upsert(ctx, obj, &tsapi.DocumentIndexParameters{})
 	return err
 }
 
 func (cl *Client) Search(ctx context.Context, col Collection, field, q string, out any) error {
-	result, err := cl.ts.Collection(col.Name()).Documents().Search(ctx,
+	result, err := cl.ts.Collection(col.Name).Documents().Search(ctx,
 		&tsapi.SearchCollectionParams{
 			Q:       &q,
 			QueryBy: &field,
@@ -72,3 +72,6 @@ func (cl *Client) Search(ctx context.Context, col Collection, field, q string, o
 	}
 	return nil
 }
+
+// ptr adapts a value to typesense-go's optional (pointer) parameters.
+func ptr[T any](v T) *T { return &v }
