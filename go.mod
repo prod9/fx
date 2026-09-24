@@ -17,7 +17,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.9.0
-	github.com/typesense/typesense-go/v2 v2.0.0
+	github.com/typesense/typesense-go/v3 v3.2.0
 	go.jonnrb.io/vanity v0.2.0
 	golang.org/x/crypto v0.40.0
 	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
@@ -38,7 +38,7 @@ require (
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
-	github.com/sony/gobreaker v0.5.0 // indirect
+	github.com/sony/gobreaker v1.0.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 )

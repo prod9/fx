@@ -4,20 +4,35 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"fx.prodigy9.co/config"
-	"github.com/typesense/typesense-go/v2/typesense"
-	ts "github.com/typesense/typesense-go/v2/typesense"
-	tsapi "github.com/typesense/typesense-go/v2/typesense/api"
+	ts "github.com/typesense/typesense-go/v3/typesense"
+	tsapi "github.com/typesense/typesense-go/v3/typesense/api"
 )
 
 var (
-	ServerConfig = config.StrDef("TYPESENSE_SERVER", "http://localhost:8108")
-	APIKeyConfig = config.Str("TYPESENSE_API_KEY")
+	ServerConfig  = config.StrDef("TYPESENSE_SERVER", "http://localhost:8108")
+	APIKeyConfig  = config.Str("TYPESENSE_API_KEY")
+	TimeoutConfig = config.DurationDef("TYPESENSE_TIMEOUT", 5*time.Second)
 )
 
+type Client struct {
+	ts *ts.Client
+}
+
+// New never fails: the underlying client connects lazily, so a misconfigured server
+// surfaces as an error on the first call instead of blocking application startup.
+func New(cfg *config.Source) *Client {
+	return &Client{ts.NewClient(
+		ts.WithServer(config.Get(cfg, ServerConfig)),
+		ts.WithAPIKey(config.Get(cfg, APIKeyConfig)),
+		ts.WithConnectionTimeout(config.Get(cfg, TimeoutConfig)),
+	)}
+}
+
 func IsNotFound(err error) bool {
-	httpErr := &typesense.HTTPError{}
+	httpErr := &ts.HTTPError{}
 	if errors.As(err, &httpErr) {
 		return httpErr.Status == 404
 	} else {
@@ -25,16 +40,9 @@ func IsNotFound(err error) bool {
 	}
 }
 
-type Client struct {
-	ts *ts.Client
-}
-
-func New(cfg *config.Source) *Client {
-	return &Client{ts.NewClient(
-		ts.WithServer(config.Get(cfg, ServerConfig)),
-		ts.WithAPIKey(config.Get(cfg, APIKeyConfig)),
-	)}
-}
+// Raw exposes the underlying typesense-go client for operations this package does not
+// wrap.
+func (cl *Client) Raw() *ts.Client { return cl.ts }
 
 func (cl *Client) CreateCollection(ctx context.Context, col Collection) error {
 	_, err := cl.ts.Collections().Create(ctx, &col.impl().schema)
@@ -45,7 +53,7 @@ func (cl *Client) DestroyCollection(ctx context.Context, col Collection) error {
 	return err
 }
 func (cl *Client) Index(ctx context.Context, col Collection, obj any) error {
-	_, err := cl.ts.Collection(col.Name()).Documents().Upsert(ctx, obj)
+	_, err := cl.ts.Collection(col.Name()).Documents().Upsert(ctx, obj, &tsapi.DocumentIndexParameters{})
 	return err
 }
 

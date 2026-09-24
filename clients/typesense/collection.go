@@ -1,6 +1,6 @@
 package typesense
 
-import tsapi "github.com/typesense/typesense-go/v2/typesense/api"
+import tsapi "github.com/typesense/typesense-go/v3/typesense/api"
 
 type (
 	Collection interface {
