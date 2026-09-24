@@ -1,6 +1,6 @@
 # FX — PRODIGY9 Go API Framework
 
-Module: `fx.prodigy9.co` | Go 1.24 | Maintainer: Chakrit Wichian
+Module: `fx.prodigy9.co` | Go 1.27 | Maintainer: Chakrit Wichian
 
 FX is a minimalistic, modular Go API framework. It bundles well-integrated tools for
 building APIs while letting engineers swap pieces in/out. Most projects should just

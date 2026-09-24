@@ -5,7 +5,7 @@ APIs — config, routing, database + migrations, background jobs, logging, mail,
 secrets, blob storage — while keeping every piece optional and the standard primitives
 (chi, sqlx, cobra, `net/http`) within reach.
 
-Module: `fx.prodigy9.co` | Go 1.24
+Module: `fx.prodigy9.co` | Go 1.27
 
 ## Install
 
