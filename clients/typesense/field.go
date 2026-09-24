@@ -1,6 +1,10 @@
 package typesense
 
-import tsapi "github.com/typesense/typesense-go/v3/typesense/api"
+import (
+	"fmt"
+
+	tsapi "github.com/typesense/typesense-go/v3/typesense/api"
+)
 
 // Field describes one field of a Collection. Every zero value keeps Typesense's own
 // default, so only the settings that differ need to be written out.
@@ -28,4 +32,26 @@ func (f Field) schema() tsapi.Field {
 		field.Locale = new(f.Locale)
 	}
 	return field
+}
+
+func fieldFromSchema(f tsapi.Field) (Field, error) {
+	typ, err := parseType(f.Type)
+	if err != nil {
+		return Field{}, fmt.Errorf("typesense: field %q: %w", f.Name, err)
+	}
+
+	field := Field{Name: f.Name, Type: typ}
+	if f.Optional != nil {
+		field.Optional = *f.Optional
+	}
+	if f.Index != nil {
+		field.NoIndex = !*f.Index
+	}
+	if f.Infix != nil {
+		field.Infix = *f.Infix
+	}
+	if f.Locale != nil {
+		field.Locale = *f.Locale
+	}
+	return field, nil
 }

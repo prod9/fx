@@ -30,3 +30,20 @@ func (c Collection) schema() *tsapi.CollectionSchema {
 	}
 	return schema
 }
+
+func collectionFromResponse(resp *tsapi.CollectionResponse) (Collection, error) {
+	fields := make([]Field, len(resp.Fields))
+	for i, f := range resp.Fields {
+		field, err := fieldFromSchema(f)
+		if err != nil {
+			return Collection{}, err
+		}
+		fields[i] = field
+	}
+
+	col := Collection{Name: resp.Name, Fields: fields}
+	if resp.DefaultSortingField != nil {
+		col.DefaultSort = *resp.DefaultSortingField
+	}
+	return col, nil
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"fx.prodigy9.co/config"
@@ -31,27 +32,22 @@ func New(cfg *config.Source) *Client {
 	)}
 }
 
-func IsNotFound(err error) bool {
+// IsNotFound reports whether Typesense answered 404, e.g. for a missing collection.
+func IsNotFound(err error) bool { return hasStatus(err, http.StatusNotFound) }
+
+// IsConflict reports whether Typesense answered 409, e.g. when creating a collection
+// whose name is taken.
+func IsConflict(err error) bool { return hasStatus(err, http.StatusConflict) }
+
+func hasStatus(err error, status int) bool {
 	httpErr := &ts.HTTPError{}
-	if errors.As(err, &httpErr) {
-		return httpErr.Status == 404
-	} else {
-		return false
-	}
+	return errors.As(err, &httpErr) && httpErr.Status == status
 }
 
 // Raw exposes the underlying typesense-go client for operations this package does not
 // wrap.
 func (cl *Client) Raw() *ts.Client { return cl.ts }
 
-func (cl *Client) CreateCollection(ctx context.Context, col Collection) error {
-	_, err := cl.ts.Collections().Create(ctx, col.schema())
-	return err
-}
-func (cl *Client) DestroyCollection(ctx context.Context, col Collection) error {
-	_, err := cl.ts.Collection(col.Name).Delete(ctx)
-	return err
-}
 func (cl *Client) Index(ctx context.Context, col Collection, obj any) error {
 	_, err := cl.ts.Collection(col.Name).Documents().Upsert(ctx, obj, &tsapi.DocumentIndexParameters{})
 	return err

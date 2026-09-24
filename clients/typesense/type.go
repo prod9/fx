@@ -1,5 +1,7 @@
 package typesense
 
+import "fmt"
+
 // Type is a Typesense field type.
 // REF: https://typesense.org/docs/29.0/api/collections.html#field-types
 type Type int
@@ -60,6 +62,17 @@ func (t Type) String() string {
 	default:
 		panic("typesense: unknown field type")
 	}
+}
+
+// parseType maps a Typesense type name back to a Type. Types this package does not
+// model, such as image, are errors rather than a silent guess.
+func parseType(name string) (Type, error) {
+	for t := AutoType; t <= ObjectArrType; t++ {
+		if t.String() == name {
+			return t, nil
+		}
+	}
+	return AutoType, fmt.Errorf("typesense: unsupported field type %q", name)
 }
 
 func (t Type) isObject() bool { return t == ObjectType || t == ObjectArrType }
