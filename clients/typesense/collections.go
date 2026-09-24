@@ -1,11 +1,9 @@
 package typesense
 
-import (
-	"context"
+import "context"
 
-	tsapi "github.com/typesense/typesense-go/v3/typesense/api"
-)
-
+// CreateCollection creates col on the server. There is deliberately no update: to change
+// a schema, DestroyCollection the old one and CreateCollection the new one.
 func (cl *Client) CreateCollection(ctx context.Context, col Collection) error {
 	_, err := cl.ts.Collections().Create(ctx, col.schema())
 	return err
@@ -34,32 +32,8 @@ func (cl *Client) ListCollections(ctx context.Context) ([]Collection, error) {
 	return cols, nil
 }
 
-// AddFields adds fields to an existing collection. Typesense only alters a schema by
-// adding and dropping fields; to change a field, drop it and add it back.
-func (cl *Client) AddFields(ctx context.Context, name string, fields ...Field) error {
-	schemas := make([]tsapi.Field, len(fields))
-	for i, f := range fields {
-		schemas[i] = f.schema()
-	}
-	return cl.updateFields(ctx, name, schemas)
-}
-
-// DropFields removes fields, and their indexed data, from an existing collection.
-func (cl *Client) DropFields(ctx context.Context, name string, fieldNames ...string) error {
-	schemas := make([]tsapi.Field, len(fieldNames))
-	for i, fieldName := range fieldNames {
-		schemas[i] = tsapi.Field{Name: fieldName, Drop: new(true)}
-	}
-	return cl.updateFields(ctx, name, schemas)
-}
-
-func (cl *Client) updateFields(ctx context.Context, name string, fields []tsapi.Field) error {
-	_, err := cl.ts.Collection(name).Update(ctx, &tsapi.CollectionUpdateSchema{Fields: fields})
-	return err
-}
-
-// DeleteCollection removes the collection and every document in it.
-func (cl *Client) DeleteCollection(ctx context.Context, name string) error {
-	_, err := cl.ts.Collection(name).Delete(ctx)
+// DestroyCollection removes the collection and every document in it.
+func (cl *Client) DestroyCollection(ctx context.Context, col Collection) error {
+	_, err := cl.ts.Collection(col.Name).Delete(ctx)
 	return err
 }

@@ -37,23 +37,6 @@ func TestListCollectionsIncludesCreated(t *testing.T) {
 	require.Contains(t, cols, col)
 }
 
-func TestAddAndDropFields(t *testing.T) {
-	cl := newTestClient(t)
-	col := Collection{Name: testCollectionName(t), Fields: []Field{{Name: "title", Type: StringType}}}
-	createTestCollection(t, cl, col)
-
-	body := Field{Name: "body", Type: StringType, Optional: true}
-	require.NoError(t, cl.AddFields(t.Context(), col.Name, body))
-	got, err := cl.GetCollection(t.Context(), col.Name)
-	require.NoError(t, err)
-	require.Equal(t, []Field{col.Fields[0], body}, got.Fields)
-
-	require.NoError(t, cl.DropFields(t.Context(), col.Name, "body"))
-	got, err = cl.GetCollection(t.Context(), col.Name)
-	require.NoError(t, err)
-	require.Equal(t, col.Fields, got.Fields)
-}
-
 func TestCollectionErrorsAreClassified(t *testing.T) {
 	cl := newTestClient(t)
 	col := Collection{Name: testCollectionName(t), Fields: []Field{{Name: "title", Type: StringType}}}

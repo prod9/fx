@@ -23,11 +23,11 @@ func newTestClient(t *testing.T) *Client {
 }
 
 // createTestCollection creates col fresh, clearing any copy left by an aborted earlier
-// run, and deletes it when the test ends.
+// run, and destroys it when the test ends.
 func createTestCollection(t *testing.T, cl *Client, col Collection) {
 	t.Helper()
 
-	err := cl.DeleteCollection(t.Context(), col.Name)
+	err := cl.DestroyCollection(t.Context(), col)
 	if err != nil && !IsNotFound(err) {
 		require.NoError(t, err)
 	}
@@ -35,7 +35,7 @@ func createTestCollection(t *testing.T, cl *Client, col Collection) {
 
 	t.Cleanup(func() {
 		// t.Context() is already cancelled by the time cleanups run.
-		require.NoError(t, cl.DeleteCollection(context.Background(), col.Name))
+		require.NoError(t, cl.DestroyCollection(context.Background(), col))
 	})
 }
 
