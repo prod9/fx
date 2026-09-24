@@ -16,16 +16,16 @@ type Field struct {
 func (f Field) schema() tsapi.Field {
 	field := tsapi.Field{Name: f.Name, Type: f.Type.String()}
 	if f.Optional {
-		field.Optional = ptr(true)
+		field.Optional = new(true)
 	}
 	if f.NoIndex {
-		field.Index = ptr(false)
+		field.Index = new(false)
 	}
 	if f.Infix {
-		field.Infix = ptr(true)
+		field.Infix = new(true)
 	}
 	if f.Locale != "" {
-		field.Locale = ptr(f.Locale)
+		field.Locale = new(f.Locale)
 	}
 	return field
 }

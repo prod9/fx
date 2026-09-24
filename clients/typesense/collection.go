@@ -21,12 +21,12 @@ func (c Collection) schema() *tsapi.CollectionSchema {
 
 	schema := &tsapi.CollectionSchema{Name: c.Name, Fields: fields}
 	if c.DefaultSort != "" {
-		schema.DefaultSortingField = ptr(c.DefaultSort)
+		schema.DefaultSortingField = new(c.DefaultSort)
 	}
 	// Typesense rejects object fields unless nested fields are enabled, so enable
 	// them whenever the schema declares one rather than making callers remember.
 	if slices.ContainsFunc(c.Fields, func(f Field) bool { return f.Type.isObject() }) {
-		schema.EnableNestedFields = ptr(true)
+		schema.EnableNestedFields = new(true)
 	}
 	return schema
 }

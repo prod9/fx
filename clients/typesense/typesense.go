@@ -72,6 +72,3 @@ func (cl *Client) Search(ctx context.Context, col Collection, field, q string, o
 	}
 	return nil
 }
-
-// ptr adapts a value to typesense-go's optional (pointer) parameters.
-func ptr[T any](v T) *T { return &v }
