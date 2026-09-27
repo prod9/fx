@@ -15,26 +15,26 @@ func GetDocument[T any](ctx context.Context, cl *Client, col Collection, id stri
 
 // CreateDocument indexes doc as a new document; it fails with IsConflict when a
 // document with the same id already exists.
-func (cl *Client) CreateDocument(ctx context.Context, col Collection, doc any) error {
+func CreateDocument[T any](ctx context.Context, cl *Client, col Collection, doc T) error {
 	_, err := cl.ts.Collection(col.Name).Documents().Create(ctx, doc, &tsapi.DocumentIndexParameters{})
 	return err
 }
 
 // Index creates doc, or replaces the existing document with the same id.
-func (cl *Client) Index(ctx context.Context, col Collection, doc any) error {
+func Index[T any](ctx context.Context, cl *Client, col Collection, doc T) error {
 	_, err := cl.ts.Collection(col.Name).Documents().Upsert(ctx, doc, &tsapi.DocumentIndexParameters{})
 	return err
 }
 
 // UpdateDocument writes doc over the existing document with the given id; it fails with
 // IsNotFound when there is no such document.
-func (cl *Client) UpdateDocument(ctx context.Context, col Collection, id string, doc any) error {
+func UpdateDocument[T any](ctx context.Context, cl *Client, col Collection, id string, doc T) error {
 	_, err := cl.ts.Collection(col.Name).Document(id).Update(ctx, doc, &tsapi.DocumentIndexParameters{})
 	return err
 }
 
 // DestroyDocument removes the document with the given id.
-func (cl *Client) DestroyDocument(ctx context.Context, col Collection, id string) error {
+func DestroyDocument(ctx context.Context, cl *Client, col Collection, id string) error {
 	_, err := cl.ts.Collection(col.Name).Document(id).Delete(ctx)
 	return err
 }

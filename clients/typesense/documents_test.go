@@ -18,18 +18,18 @@ func TestDocumentLifecycle(t *testing.T) {
 	ctx := t.Context()
 
 	doc := testDoc{ID: "1", Title: "first", Rank: 1}
-	require.NoError(t, cl.CreateDocument(ctx, col, doc))
+	require.NoError(t, CreateDocument(ctx, cl, col, doc))
 	got, err := GetDocument[testDoc](ctx, cl, col, "1")
 	require.NoError(t, err)
 	require.Equal(t, doc, got)
 
 	doc = testDoc{ID: "1", Title: "updated", Rank: 2}
-	require.NoError(t, cl.UpdateDocument(ctx, col, "1", doc))
+	require.NoError(t, UpdateDocument(ctx, cl, col, "1", doc))
 	got, err = GetDocument[testDoc](ctx, cl, col, "1")
 	require.NoError(t, err)
 	require.Equal(t, doc, got)
 
-	require.NoError(t, cl.DestroyDocument(ctx, col, "1"))
+	require.NoError(t, DestroyDocument(ctx, cl, col, "1"))
 	_, err = GetDocument[testDoc](ctx, cl, col, "1")
 	require.True(t, IsNotFound(err), "destroyed document must be not found, got %v", err)
 }
@@ -39,9 +39,9 @@ func TestIndexCreatesThenReplaces(t *testing.T) {
 	col := createTestDocCollection(t, cl)
 	ctx := t.Context()
 
-	require.NoError(t, cl.Index(ctx, col, testDoc{ID: "1", Title: "first", Rank: 1}))
+	require.NoError(t, Index(ctx, cl, col, testDoc{ID: "1", Title: "first", Rank: 1}))
 	doc := testDoc{ID: "1", Title: "replaced", Rank: 5}
-	require.NoError(t, cl.Index(ctx, col, doc))
+	require.NoError(t, Index(ctx, cl, col, doc))
 
 	got, err := GetDocument[testDoc](ctx, cl, col, "1")
 	require.NoError(t, err)
@@ -54,15 +54,15 @@ func TestDocumentErrorsAreClassified(t *testing.T) {
 	ctx := t.Context()
 
 	doc := testDoc{ID: "1", Title: "first", Rank: 1}
-	require.NoError(t, cl.CreateDocument(ctx, col, doc))
+	require.NoError(t, CreateDocument(ctx, cl, col, doc))
 
-	err := cl.CreateDocument(ctx, col, doc)
+	err := CreateDocument(ctx, cl, col, doc)
 	require.True(t, IsConflict(err), "creating a taken id must be a conflict, got %v", err)
 
-	err = cl.UpdateDocument(ctx, col, "missing", testDoc{ID: "missing", Title: "x"})
+	err = UpdateDocument(ctx, cl, col, "missing", testDoc{ID: "missing", Title: "x"})
 	require.True(t, IsNotFound(err), "updating a missing document must be not found, got %v", err)
 
-	err = cl.DestroyDocument(ctx, col, "missing")
+	err = DestroyDocument(ctx, cl, col, "missing")
 	require.True(t, IsNotFound(err), "destroying a missing document must be not found, got %v", err)
 }
 
