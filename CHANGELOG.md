@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.10.5
+
+* **root:** FX now requires Go 1.27.1 or later.
+* **clients/typesense:** Moved to typesense-go v3. `Raw()` exposes the underlying client
+  for operations the wrapper does not cover, and `TYPESENSE_TIMEOUT` (default 5s) sets
+  the request timeout.
+* **clients/typesense:** Breaking — the collection builder is replaced by plain
+  `Collection` and `Field` struct values, with a `Type` enum covering Typesense's field
+  types. Object fields enable nested fields automatically.
+* **clients/typesense:** New `GetCollection` and `ListCollections` read server schemas
+  back as `Collection` values; `IsConflict` joins `IsNotFound`.
+* **clients/typesense:** Breaking — document operations are generic package functions
+  (`GetDocument[T]`, `CreateDocument[T]`, `Index[T]`, `UpdateDocument[T]`,
+  `DestroyDocument`). `CreateDocument` and `UpdateDocument` fail on conflict / not found
+  where `Index` upserts.
+
 ## v0.10.4
 
 * **app/files:** The cleanup worker now supports configurable upload grace period,
