@@ -48,11 +48,6 @@ func hasStatus(err error, status int) bool {
 // wrap.
 func (cl *Client) Raw() *ts.Client { return cl.ts }
 
-func (cl *Client) Index(ctx context.Context, col Collection, obj any) error {
-	_, err := cl.ts.Collection(col.Name).Documents().Upsert(ctx, obj, &tsapi.DocumentIndexParameters{})
-	return err
-}
-
 func (cl *Client) Search(ctx context.Context, col Collection, field, q string, out any) error {
 	result, err := cl.ts.Collection(col.Name).Documents().Search(ctx,
 		&tsapi.SearchCollectionParams{
