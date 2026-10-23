@@ -23,6 +23,7 @@ const (
 
 		CREATE INDEX IF NOT EXISTS idx_jobs_name_status ON jobs(name, status);
 		CREATE INDEX IF NOT EXISTS idx_jobs_status_scheduled_at ON jobs(status, scheduled_at);
+		CREATE INDEX IF NOT EXISTS idx_jobs_status_updated_at ON jobs(status, updated_at);
 		`
 
 	ScheduleJobSQL = `
@@ -66,6 +67,17 @@ const (
 			updated_at = $3
 		WHERE id = $4 AND status = $5
 		RETURNING *;`
+
+	AbandonStaleJobsSQL = `
+		UPDATE jobs
+		SET status = $1,
+			error = $2,
+			updated_at = $3
+		WHERE status = $4 AND updated_at < $5;`
+
+	DeleteStaleJobsSQL = `
+		DELETE FROM jobs
+		WHERE status IN ($1, $2) AND updated_at < $3;`
 )
 
 type JobStatus string

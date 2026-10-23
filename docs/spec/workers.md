@@ -109,6 +109,36 @@ the job's runtime. `FOR UPDATE` locks were rejected for exactly that visibility
 reason: a locked-row claim would hide which jobs are actually being processed. Jobs
 wanting transactional work use `data.Run` inside `Run` themselves.
 
+## Cleanup
+
+Every run of a recurring job leaves a finished row behind, so the `jobs` table grows
+without bound. `worker.CleanupJob` keeps it bounded by deleting rows that need no further
+processing. Register it and seed it once, like any self-rescheduling job:
+
+```go
+w := worker.New(cfg, &SendEmailJob{}, worker.CleanupJob)
+worker.ScheduleNowIfNotExists(ctx, worker.CleanupJob)
+```
+
+Each run does two things, using `WORKER_STALE_DURATION` as the only threshold:
+
+1. A `running` row whose `updated_at` is older than the stale duration is marked
+   `failed` with error `abandoned`. FX has no heartbeat, so a worker that died mid-job
+   would otherwise leave the row `running` forever. This assumes no job legitimately
+   runs longer than the stale duration. The update stamps `updated_at`, so the
+   abandoned row stays visible for one more stale period.
+2. `completed` and `failed` rows older than the stale duration are deleted. `pending`
+   rows are never touched.
+
+The deletion is a single `DELETE`; there is no batching knob, since Postgres handles the
+volume. The job reschedules itself every stale duration and assumes a setup that runs
+the worker regularly: it makes no attempt to catch up on missed runs.
+
+`<app> worker cleanup` runs the same cleanup synchronously and exits, without a worker
+process or scheduling anything.
+
 ## Configuration
 
 * `WORKER_POLL` — Polling interval (default: `1m`).
+* `WORKER_STALE_DURATION` — Age after which finished jobs are deleted and running jobs
+  are marked abandoned; also the cleanup job's cadence (default: `48h`).
