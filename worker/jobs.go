@@ -107,8 +107,9 @@ type Job struct {
 
 // ensureJobsTable creates the jobs table if absent. It is idempotent (all DDL is IF NOT
 // EXISTS), so the primitives that may be the first jobs operation in a flow — scheduleJob,
-// findPendingJobByName, takeOnePendingJob — call it lazily on entry. A job can then be
-// scheduled or polled from any context, on a fresh database, without a prior setup step.
+// findPendingJobByName, takeOnePendingJob, Cleanup — call it lazily on entry. A job can
+// then be scheduled, polled, or cleaned up from any context, on a fresh database, without
+// a prior setup step.
 // (The mark* helpers only run after takeOnePendingJob, so the table already exists.)
 func ensureJobsTable(ctx context.Context) error {
 	return data.Exec(ctx, CreateJobsTableSQL)

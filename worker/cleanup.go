@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"fx.prodigy9.co/config"
@@ -18,18 +19,23 @@ var (
 	// once at startup: worker.ScheduleNowIfNotExists(ctx, worker.CleanupJob). The job
 	// reschedules itself thereafter.
 	CleanupJob Interface = &cleanupJob{}
-
-	abandonedError = "abandoned"
 )
+
+const abandonedError = "abandoned"
 
 type cleanupJob struct{}
 
 func (j *cleanupJob) Name() string { return "worker-cleanup" }
 
-func (j *cleanupJob) Run(ctx context.Context) error {
+func (j *cleanupJob) Run(ctx context.Context) (err error) {
 	staleDuration := config.Get(config.FromContext(ctx), StaleDurationConfig)
 
-	defer ScheduleInIfNotExists(ctx, CleanupJob, staleDuration)
+	defer func() {
+		_, schedErr := ScheduleInIfNotExists(ctx, CleanupJob, staleDuration)
+		if schedErr != nil && !errors.Is(schedErr, ErrJobExists) {
+			err = errors.Join(err, schedErr)
+		}
+	}()
 	return Cleanup(ctx, time.Now(), staleDuration)
 }
 
