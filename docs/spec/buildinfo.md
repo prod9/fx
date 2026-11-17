@@ -7,7 +7,7 @@ logs, and introspection routes.
 
 ## Build-time facts
 
-`buildinfo.Get()` returns an `Info` resolved once per process, read-only:
+`buildinfo.Get()` returns what Go stamped into the binary:
 
 ```go
 type Info struct {
@@ -17,20 +17,15 @@ type Info struct {
 }
 ```
 
-| Field      | First set of                                                                             |
-| ---------- | ---------------------------------------------------------------------------------------- |
-| `Name`     | link-time `name`; the binary's file name                                                 |
-| `Version`  | link-time `version`; Go's module version from `debug.ReadBuildInfo`; `(devel)`           |
-| `Revision` | Go's `vcs.revision` build setting                                                        |
+| Field      | Source                                                       |
+| ---------- | ------------------------------------------------------------ |
+| `Name`     | the binary's file name                                       |
+| `Version`  | the main module's version from `debug.ReadBuildInfo`         |
+| `Revision` | the `vcs.revision` build setting                             |
 
-Link-time values come from `-ldflags`:
-
-```sh
-go build -ldflags "-X fx.prodigy9.co/buildinfo.version=$(git describe --tags --always)" .
-```
-
-Go stamps the module version and VCS revision itself when the build sees the `.git`
-directory, so a plain `go build` in a checkout needs no flags.
+A plain `go build` in a git checkout stamps both: the tag (or a pseudo-version) as the
+module version, and the commit as the revision. A build without VCS information reports
+Go's `(devel)` and no revision.
 
 ## Info on the context
 
