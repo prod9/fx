@@ -15,9 +15,9 @@ type _TType interface {
 
 type _Var interface {
 	Name() string
+	Aliases() []string
 
-	defaultAny() any
-	parseAny(string) (any, error)
+	getAny(*Source) any
 	_var() // opaque marker
 }
 
@@ -25,23 +25,35 @@ type _Var interface {
 // configuration variables and use it with the standard *Source without requiring changes
 // to the config package directly.
 type Var[T _TType] struct {
-	name   string
-	defVal T
-	parse  func(string) (T, error)
+	name    string
+	aliases []string
+	defVal  T
+	parse   func(string) (T, error)
 }
 
 func NewVar[T _TType](name string, defVal T, parse func(string) (T, error)) *Var[T] {
-	v := &Var[T]{name, defVal, parse}
+	v := &Var[T]{name: name, defVal: defVal, parse: parse}
 	defaultSource.vars = append(defaultSource.vars, v)
+	return v
+}
+
+// WithAlias adds older names the variable is also read from, tried in order after the
+// canonical name. Call it at declaration:
+//
+//	var SentryDSNConfig = config.Str("SENTRY_DSN").WithAlias("API_SENTRY_DSN")
+func (v *Var[T]) WithAlias(names ...string) *Var[T] {
+	v.aliases = append(v.aliases, names...)
 	return v
 }
 
 func (v Var[T]) Name() string   { return v.name }
 func (v Var[T]) String() string { return v.name }
 
-func (v Var[T]) defaultAny() any                  { return v.defVal }
-func (v Var[T]) parseAny(str string) (any, error) { return v.parse(str) }
-func (_ Var[T]) _var()                            { /* marker */ }
+// Aliases returns the older names the variable is also read from, in lookup order.
+func (v Var[T]) Aliases() []string { return v.aliases }
+
+func (v *Var[T]) getAny(src *Source) any { return Get(src, v) }
+func (_ Var[T]) _var()                   { /* marker */ }
 
 func Str(name string) *Var[string]             { return NewVar(name, "", parseStr) }
 func Int(name string) *Var[int]                { return NewVar(name, 0, parseInt) }

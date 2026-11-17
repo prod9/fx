@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var CORSOriginConfig = config.Str("API_CORS_ORIGINS")
+var CORSOriginConfig = config.Str("CORS_ORIGINS").WithAlias("API_CORS_ORIGINS")
 
 func CORSAllowAll(cfg *config.Source) func(http.Handler) http.Handler {
 	var handler *cors.Cors

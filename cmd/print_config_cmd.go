@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"fx.prodigy9.co/config"
@@ -30,8 +31,9 @@ func runPrintConfigCmd(cmd *cobra.Command, args []string) error {
 		//
 		//    psql "$(./app print-config DATABASE_URL)"
 		//
+		matches := func(name string) bool { return strings.EqualFold(name, args[0]) }
 		for _, v := range cfg.Vars() {
-			if strings.EqualFold(v.Name(), args[0]) {
+			if matches(v.Name()) || slices.ContainsFunc(v.Aliases(), matches) {
 				fmt.Fprintln(os.Stdout, config.GetAny(cfg, v))
 				break
 			}

@@ -27,14 +27,15 @@ For 3rd-party middleware, only the 2nd layer is needed — config layer wraps it
 
 - `middlewares.Configure` — injects `*config.Source` into request context
 - `middlewares.LogRequests` — request/response metrics via httpsnoop
-- `middlewares.CORSAllowAll()` — wraps `github.com/rs/cors`
+- `middlewares.CORSAllowAll()` — wraps `github.com/rs/cors`; `CORS_ORIGINS` limits
+  origins
 - `middlewares.AddDataContext` — injects `*sqlx.DB` into request context
 
 ### Other middlewares
 
 - `middlewares.CheckMigrations` — block routes until migrations applied (`MUST_MIGRATE=1`)
 - `middlewares.DebugRequest` — dump req/resp bodies (`DEBUG_REQUEST=1` / `DEBUG_RESPONSE=1`)
-- `middlewares.Sentry` — error reporting via `API_SENTRY_DSN`
+- `middlewares.Sentry` — error reporting via `SENTRY_DSN`
 
 ### Selective application
 

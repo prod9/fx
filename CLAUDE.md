@@ -130,7 +130,8 @@ go test ./...            # Run tests
 ## Testing
 
 Tests use `testify` for assertions and `fxtest.Configure()` for test config sources.
-Test files exist in: `validate/`, `secret/`, `data/migrator/`, `data/dbname/`, `examples/envfiles/`.
+Test files exist in: `config/`, `validate/`, `secret/`, `data/migrator/`, `data/dbname/`,
+`examples/envfiles/`.
 
 ## Git commit convention
 

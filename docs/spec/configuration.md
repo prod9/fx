@@ -83,6 +83,40 @@ lower ones:
 * `config.*Def` — Default values set on definition.
 * Go defaults (e.g. `0` for int, `""` for string, etc.)
 
+## Configuration problems never block startup
+
+A configuration problem must not prevent the app from starting. Config is read before
+anything else, so a hard failure there would also take down the tools needed to diagnose
+it (`print-config`, `data psql`, health routes). Instead:
+
+* An unset or blank value yields the default.
+* A value that does not parse logs `<NAME>: <error>` and yields the default.
+* A failed provider read (for example the `settings` provider's database is down) logs
+  `config: <error>` and yields the default.
+
+A consumer that cannot work without a valid value fails where it uses it: a wrong
+`DATABASE_URL` still fails when the app connects. `config.GetOK` reports `false` in every
+case above, for callers that must tell "set" from "defaulted".
+
+## Aliases
+
+A variable can be read from older names, so a rename does not break deployments that
+still set the old one:
+
+```go
+var SentryDSNConfig = config.Str("SENTRY_DSN").WithAlias("API_SENTRY_DSN")
+```
+
+`Name()` is always the canonical name; `Aliases()` lists the older names. Reads try the
+canonical name first, then each alias in order, taking the first non-blank value, so the
+canonical name wins when both are set. The first read through an alias logs once that the
+variable should be renamed. `config.Set` writes the canonical name only.
+`print-config <name>` accepts the canonical name or any alias.
+
+fx's own variables dropped their `API_` prefix this way: `API_SENTRY_DSN` is now
+`SENTRY_DSN` and `API_CORS_ORIGINS` is now `CORS_ORIGINS`; the old names still work as
+aliases.
+
 ## Conventions for App-Level Config
 
 A few config values are needed by almost every API but are intentionally not built into

@@ -66,7 +66,8 @@ Some default middlewares are included when `.AddDefaults()` is called:
 * `middlewares.Configure` — Injects `*config.Source` into the request context.
 * `middlewares.LogRequests` — Captures metrics with `github.com/felixge/httpsnoop` and
   logs requests/responses.
-* `middlewares.CORSAllowAll()` — Wraps `github.com/rs/cors` to allow all CORS requests.
+* `middlewares.CORSAllowAll()` — Wraps `github.com/rs/cors` to allow all CORS requests,
+  or only the comma-separated origins in `CORS_ORIGINS` when set.
 * `middlewares.AddDataContext` — Adds a `*sqlx.DB` to the request context.
 
 Some other non-default middlewares include:
@@ -76,7 +77,7 @@ Some other non-default middlewares include:
 * `middlewares.DebugRequest` — Prints out incoming request body if `DEBUG_REQUEST=1` is
   set, or prints out the outgoing response body if `DEBUG_RESPONSE=1` is set.
 * `middlewares.Sentry` — Installs sentry error reporting handler with DSN set in
-  `API_SENTRY_DSN` environment variable.
+  `SENTRY_DSN` environment variable.
 
 Use go-chi's `Route` and `Group` to create sub-routes and apply middlewares selectively.
 

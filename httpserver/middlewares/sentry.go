@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	SentryDSNConfig = config.Str("API_SENTRY_DSN")
+	SentryDSNConfig = config.Str("SENTRY_DSN").WithAlias("API_SENTRY_DSN")
 )
 
 type sentryContainer struct {
