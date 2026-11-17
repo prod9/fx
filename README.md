@@ -34,7 +34,7 @@ func main() {
 	err := app.Build().
 		Description("My API").
 		AddDefaults().
-		Controllers(controllers.Home{}).
+		Controllers(controllers.Meta("/.nx")).
 		Start()
 
 	if err != nil {

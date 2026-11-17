@@ -10,7 +10,7 @@ import (
 func TestFragment_IsEmpty_SeesChildren(t *testing.T) {
 	var (
 		empty     = NewFragment(nil, nil)
-		withCtrs  = NewFragment(nil, []controllers.Interface{controllers.Home{}})
+		withCtrs  = NewFragment(nil, []controllers.Interface{controllers.Meta("/.nx")})
 		withChild = NewFragment(nil, nil).AddChild(withCtrs)
 	)
 

@@ -43,7 +43,7 @@ func TestCollectJobs_UnionsTree(t *testing.T) {
 
 func TestCollectFragment_PreservesChildControllers(t *testing.T) {
 	var (
-		child = Build().Name("child").Controllers(controllers.Home{})
+		child = Build().Name("child").Controllers(controllers.Meta("/.nx"))
 		root  = Build().Name("root").Mount(child)
 	)
 

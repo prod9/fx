@@ -19,7 +19,7 @@ func main() {
 	err := app.Build().
 		Description("Send a file to a friend — files + blobserver example").
 		AddDefaults().
-		Controllers(controllers.Home{}).
+		Controllers(controllers.Meta("/.nx")).
 		Mount(files.App).
 		Mount(drops.App).
 		Start()

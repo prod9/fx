@@ -5,6 +5,7 @@ import (
 
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
+	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/httperrors"
 	"fx.prodigy9.co/httpserver/render"
 	"github.com/go-chi/chi/v5"
@@ -12,12 +13,15 @@ import (
 
 type ctr struct{}
 
-// MountRoutes wires the settings endpoints onto router. It is not a fragment auto-mount:
-// the consumer calls it inside a route group they define and guard (auth / RBAC / IP
-// allowlist — their call), so settings data is never exposed by mounting settings.App
+// Controller serves the settings endpoints under /settings. It is not a fragment
+// auto-mount: mount it inside a route group you define and guard (auth / RBAC / IP
+// allowlist — your call), so settings data is never exposed by mounting settings.App
 // alone.
-func MountRoutes(cfg *config.Source, router chi.Router) error {
-	c := ctr{}
+func Controller() controllers.Interface {
+	return ctr{}
+}
+
+func (c ctr) Mount(cfg *config.Source, router chi.Router) error {
 	router.Route("/settings", func(r chi.Router) {
 		r.Get("/", c.Index)
 		r.Post("/{slug}", c.Upsert)

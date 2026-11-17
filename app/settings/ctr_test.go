@@ -15,9 +15,9 @@ import (
 )
 
 // TestMountServesSettings drives the settings endpoints end to end through the exported
-// MountRoutes entrypoint: an empty list is served, an upsert creates a row, and a follow-up
+// Controller entrypoint: an empty list is served, an upsert creates a row, and a follow-up
 // list reflects it. It also stands in for the mount-auth contract — routes exist only where
-// the consumer calls MountRoutes, never from the fragment itself.
+// the consumer mounts Controller, never from the fragment itself.
 func TestMountServesSettings(t *testing.T) {
 	ctx := fxtest.ConnectTestDatabase(t)
 	createSettingsTable(t, ctx)
@@ -32,7 +32,7 @@ func TestMountServesSettings(t *testing.T) {
 			next.ServeHTTP(w, req.WithContext(c))
 		})
 	})
-	require.NoError(t, MountRoutes(cfg, router))
+	require.NoError(t, Controller().Mount(cfg, router))
 
 	srv := httptest.NewServer(router)
 	defer srv.Close()

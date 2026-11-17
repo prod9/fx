@@ -14,7 +14,7 @@ var migrations embed.FS
 
 // App is the settings fragment: it owns the settings table through the embedded migration,
 // applied by `data migrate` like any other fragment. Its REST controller is deliberately
-// not a fragment auto-mount — call settings.MountRoutes inside a route group you own and
+// not a fragment auto-mount — mount settings.Controller() inside a route group you own and
 // guard, so settings data is never exposed by the mere act of mounting App.
 var App = app.Build().
 	EmbedMigrations(migrations)

@@ -15,7 +15,7 @@ func main() {
 		Description("Example TODO API application").
 		AddDefaults().
 		Middlewares(middlewares.DebugRequest).
-		Controllers(controllers.Home{}).
+		Controllers(controllers.Meta("/.nx")).
 		Mount(auth.App).
 		Mount(todos.App).
 		Start()
