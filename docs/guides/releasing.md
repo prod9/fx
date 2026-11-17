@@ -1,9 +1,10 @@
 # Releasing
 
 FX releases are cut with [`platform`](https://platform.prodigy9.co) using the `semver`
-strategy. The repo ships a `./platform` wrapper that pins a known-good `platform`
-version (`go run platform.prodigy9.co@<version>`), so contributors don't need a global
-install.
+strategy. The repo ships a `./platform` launcher that pins a known-good `platform`
+version (`PLATFORM_VERSION`), so contributors don't need a global install. The first run
+compiles that version into the gitignored `bin/platform-<version>`, which takes minutes
+once; later runs start at once.
 
 ## Pre-release checklist
 

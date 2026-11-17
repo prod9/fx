@@ -154,7 +154,8 @@ Claude/co-author trailers — commits land under the maintainer's identity, plai
 ## Releasing
 
 See [`docs/guides/releasing.md`](docs/guides/releasing.md). Short version: clean tree, push
-commits, update `CHANGELOG.md`, `./platform release --patch` (tags + pushes the tag).
+commits, update `CHANGELOG.md`, `./platform release --patch` (or `--minor` for breaking
+changes; tags + pushes the tag).
 
 ## Documentation
 
