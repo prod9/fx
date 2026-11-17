@@ -42,6 +42,7 @@ type (
 		sync.Mutex
 		interval  time.Duration
 		knownJobs map[string]Interface
+		filters   []Filter
 		cfg       *config.Source
 		cancel    context.CancelCauseFunc
 	}
@@ -58,6 +59,7 @@ const (
 func New(cfg *config.Source, jobs ...Interface) *Worker {
 	w := &Worker{
 		interval: config.Get(cfg, PollingIntervalConfig),
+		filters:  []Filter{SentryFilter, RecoverFilter, LogFilter},
 		cfg:      cfg,
 		cancel:   nil,
 	}
@@ -220,59 +222,49 @@ func (w *Worker) workOnce(ctx context.Context) workerSignal {
 		return signalIdled
 	}
 
-	fxlog.Log("running",
-		fxlog.String("job", job.Name),
-		fxlog.Int64("id", job.ID),
-	)
-	start := time.Now()
-
-	// we got one "running" job to process
-	if err := w.processJob(ctx, job); err != nil {
-		fxlog.Log("failed",
-			fxlog.String("job", job.Name),
-			fxlog.Int64("id", job.ID),
-			fxlog.Duration("duration", time.Since(start)),
-			fxlog.Any("error", err),
-		)
-		if err := markJobAsFailed(ctx, job.ID, err.Error()); err != nil {
-			w.cancel(err)
-			return signalStop
-		}
-
+	if err = w.processJob(ctx, job); err != nil {
+		err = markJobAsFailed(ctx, job.ID, err.Error())
 	} else {
-		fxlog.Log("completed",
-			fxlog.String("job", job.Name),
-			fxlog.Int64("id", job.ID),
-			fxlog.Duration("duration", time.Since(start)),
-		)
-		if err := markJobAsCompleted(ctx, job.ID); err != nil {
-			w.cancel(err)
-			return signalStop
-		}
+		err = markJobAsCompleted(ctx, job.ID)
 	}
-
+	if err != nil {
+		w.cancel(err)
+		return signalStop
+	}
 	return signalWorkDone
 }
 
+// processJob prepares the job, wraps it in the worker's filters, and runs it.
+// Preparation is fixed: filters never see a job before its Reset and payload decode.
 func (w *Worker) processJob(ctx context.Context, job *Job) error {
-	var instance Interface
+	instance, err := w.prepare(job)
+	if err != nil {
+		return err
+	}
 
-	if j, ok := w.knownJobs[job.Name]; !ok {
-		return errors.New("unknown (or unregistered) job: " + job.Name)
-	} else {
-		instance = j
+	for _, filter := range w.filters {
+		if instance, err = filter(ctx, instance); err != nil {
+			return err
+		}
+	}
+
+	if err = instance.Run(ctx); err != nil {
+		return fmt.Errorf("run failed: %w", err)
+	}
+	return nil
+}
+
+func (w *Worker) prepare(job *Job) (Interface, error) {
+	instance, ok := w.knownJobs[job.Name]
+	if !ok {
+		return nil, errors.New("unknown (or unregistered) job: " + job.Name)
 	}
 
 	if resetter, ok := instance.(Resetter); ok {
 		resetter.Reset()
 	}
 	if err := json.Unmarshal([]byte(job.Payload), instance); err != nil {
-		return fmt.Errorf("malformed payload: %w", err)
+		return nil, fmt.Errorf("malformed payload: %w", err)
 	}
-
-	if err := instance.Run(ctx); err != nil {
-		return fmt.Errorf("run failed: %w", err)
-	} else {
-		return nil
-	}
+	return instance, nil
 }

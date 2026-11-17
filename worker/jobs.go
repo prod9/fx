@@ -143,10 +143,6 @@ func scheduleJobIfNotExists(ctx context.Context, name string, payload []byte, t 
 }
 
 func takeOnePendingJob(ctx context.Context) (*Job, error) {
-	if err := ensureJobsTable(ctx); err != nil {
-		return nil, err
-	}
-
 	job := &Job{}
 	err := data.Run(ctx, func(s data.Scope) error {
 		if err := s.Get(job, FindPendingJobSQL); err != nil {
