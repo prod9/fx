@@ -3,6 +3,7 @@ package middlewares
 import (
 	"errors"
 	"net/http"
+	"sync/atomic"
 
 	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
@@ -18,16 +19,25 @@ var (
 	ErrPendingMigrations = errors.New("there are pending unapplied migrations, migrate first")
 )
 
+// CheckMigrations refuses requests while migrations are dirty or pending, when
+// MUST_MIGRATE is set. Once a check finds them clean it passes every later request
+// through without checking again.
 func CheckMigrations(cfg *config.Source) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		var clean atomic.Bool
 
-			cfg := config.FromContext(req.Context())
-			if cfg == nil {
-				cfg = config.Configure()
+		return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+			if clean.Load() {
+				h.ServeHTTP(resp, req)
+				return
 			}
 
-			if !config.Get(cfg, MustMigrateConfig) {
+			reqCfg := config.FromContext(req.Context())
+			if reqCfg == nil {
+				reqCfg = config.Configure()
+			}
+
+			if !config.Get(reqCfg, MustMigrateConfig) {
 				h.ServeHTTP(resp, req)
 				return
 			}
@@ -38,7 +48,7 @@ func CheckMigrations(cfg *config.Source) func(http.Handler) http.Handler {
 				return
 			}
 
-			m := migrator.New(db, migrator.FromAuto(cfg))
+			m := migrator.New(db, migrator.FromAuto(reqCfg))
 			plans, dirty, err := m.Plan(req.Context(), migrator.IntentMigrate)
 			switch {
 			case err != nil:
@@ -48,9 +58,9 @@ func CheckMigrations(cfg *config.Source) func(http.Handler) http.Handler {
 			case len(plans) > 0:
 				render.Error(resp, req, 500, ErrPendingMigrations)
 			default:
+				clean.Store(true)
 				h.ServeHTTP(resp, req)
 			}
-
 		})
 	}
 }
