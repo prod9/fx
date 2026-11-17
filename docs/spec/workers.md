@@ -24,8 +24,11 @@ carries `buildinfo` (see [buildinfo.md](buildinfo.md)).
 The worker runs one job at a time; scaling is by process. Each job goes through three
 stages:
 
-1. **Preparation, fixed:** resolve the job by name, `Reset` it, decode its payload.
-2. **Filters:** each `worker.Filter` takes the prepared job and returns it, usually
+1. **Preparation, fixed:** resolve the job by name, `Reset` it, decode its payload. A
+   failure here is logged as `failed` (job name, ID, error) by the worker itself, since
+   no filter has run yet.
+2. **Filters:** each `worker.Filter` (`func(ctx, id int64, job Interface) (Interface,
+   error)`) takes the job's ID and the prepared job and returns the job, usually
    wrapped in a `worker.Stub{JobName, RunFunc}` whose `Run` defers around the inner
    `Run`. Filters apply in list order, each wrapping the result of the one before, so the
    last is outermost. A filter that returns an error fails the job without running it.
@@ -38,7 +41,8 @@ stages:
   returned error. It sits before `RecoverFilter` so it sees the panic first.
 * `RecoverFilter` — turns a panic into the run's error, so the job is marked failed and
   the worker keeps running.
-* `LogFilter` — logs `running`, then `completed` or `failed` with the duration.
+* `LogFilter` — logs `running`, then `completed` or `failed` with the job's name, ID
+  and duration.
 
 ## Job Interface
 

@@ -235,15 +235,21 @@ func (w *Worker) workOnce(ctx context.Context) workerSignal {
 }
 
 // processJob prepares the job, wraps it in the worker's filters, and runs it.
-// Preparation is fixed: filters never see a job before its Reset and payload decode.
+// Preparation is fixed: filters never see a job before its Reset and payload decode, so
+// preparation failures are logged here rather than by LogFilter.
 func (w *Worker) processJob(ctx context.Context, job *Job) error {
 	instance, err := w.prepare(job)
 	if err != nil {
+		fxlog.Log("failed",
+			fxlog.String("job", job.Name),
+			fxlog.Int64("id", job.ID),
+			fxlog.Any("error", err),
+		)
 		return err
 	}
 
 	for _, filter := range w.filters {
-		if instance, err = filter(ctx, instance); err != nil {
+		if instance, err = filter(ctx, job.ID, instance); err != nil {
 			return err
 		}
 	}
