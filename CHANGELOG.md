@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.11.0
+
+* **config:** `Var.WithAlias` keeps older names readable; the first read through an
+  alias logs a rename hint. `API_SENTRY_DSN` is now `SENTRY_DSN` and `API_CORS_ORIGINS`
+  is now `CORS_ORIGINS`, with the old names kept as aliases.
+* **buildinfo:** New package reporting the program's name, version and revision from
+  what Go stamps into the binary. `app.Start` puts an `Info` named after the root app on
+  its context.
+* **httpserver, worker:** New `StartContext(ctx)`; `Start()` stays and uses
+  `context.Background()`.
+* **fxsentry:** New package: one process-wide Sentry client, off when `SENTRY_DSN` is
+  unset, with scopes carried on the context. `Capture` and `CapturePanic` take release
+  and component name from `buildinfo`.
+* **middlewares:** `DefaultForAPI` now includes `Sentry` and `CheckMigrations`.
+  `CheckMigrations` stops checking once migrations are clean.
+* **worker:** Breaking — job runs go through filters (`SetFilters`, `Filter`,
+  `worker.Stub`); the defaults are `SentryFilter`, `RecoverFilter` and `LogFilter`. A
+  panicking job now fails instead of crashing the worker.
+* **controllers:** Breaking — `Home{}` and `Debug{}` are replaced by `Meta(prefix)`:
+  `/` and `/healthz` at the root; `/version`, `/buildinfo` and `/panic` (only with
+  `DEBUG_SENTRY` set) under the prefix.
+* **app/settings:** Breaking — `MountRoutes` is replaced by `Controller()`, mounted
+  behind the app's own guard.
+
 ## v0.10.5
 
 * **root:** FX now requires Go 1.27.1 or later.
