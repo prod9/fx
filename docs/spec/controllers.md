@@ -69,10 +69,18 @@ The `render` package has the following methods:
 
 The `httpserver/controllers` package includes several ready-to-use controllers:
 
-* `Home{}` — Mounts `GET /` returning `{"time": "..."}` with the current server time.
-  Useful for deployment testing and basic health checks.
-* `Debug{}` — Mounts `GET /__panic` which triggers a test panic. Useful for verifying
-  panic recovery middleware and error reporting (e.g. Sentry).
+* `Meta(prefix)` — Deployment-check and introspection routes. The prefix (such as
+  `"/.nx"`) is required:
+
+  | Route                    | Purpose                                                   |
+  | ------------------------ | --------------------------------------------------------- |
+  | `GET /`                  | liveness echo, `{"time": "..."}`                          |
+  | `GET /healthz`           | readiness; 503 when the database in context is down       |
+  | `GET <prefix>/version`   | the build's version as plain text (see buildinfo.md)      |
+  | `GET <prefix>/buildinfo` | the build's `buildinfo.Info` as JSON                      |
+  | `GET <prefix>/panic`     | test panic, mounted only when `DEBUG_SENTRY` is set       |
+
+  `<prefix>/panic` doubles as the Sentry sample: with Sentry on, it produces a report.
 * `StaticJSON(path, obj)` — Creates a controller that serves a static JSON object at
   the given path via `GET`.
 * `FromFunc(path, handlerFunc)` — Wraps an `http.HandlerFunc` as a controller mounted

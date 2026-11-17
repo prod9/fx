@@ -153,8 +153,8 @@ auth / RBAC / IP-allowlisting is a requirement, not a convention:
 
 ```go
 r.Route("/admin", func(r chi.Router) {
-  r.Use(adminAuth)                 // your guard
-  settings.MountRoutes(cfg, r)     // wires GET/POST/DELETE /settings under it
+  r.Use(adminAuth)                    // your guard
+  settings.Controller().Mount(cfg, r) // wires GET/POST/DELETE /settings under it
 })
 ```
 

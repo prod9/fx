@@ -80,6 +80,7 @@ configuration issues.
 | `cmd`                    | CLI commands via cobra (`serve`, `print-config`, data subcommands)         |
 | `cmd/store`              | `store` command group: `serve`, `upload`/`download`, `presign-*`, `delete` |
 | `fxlog`                  | Structured logging (zerolog default, slog option)                          |
+| `fxsentry`               | Sentry reporting: one client, scopes on the context (`Capture`)            |
 | `worker`                 | PostgreSQL-backed background job system                                    |
 | `validate`               | Input validation helpers                                                   |
 | `errutil`                | Error decoration (`WithCode`, `WithData`, `Wrap`)                          |

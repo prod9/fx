@@ -101,7 +101,7 @@ The throughline that guides what FX is and isn't. Full version in
 5. **Everything is optional.** `data`, `worker`, `mailer`, `cache`, `secret`,
    `blobstore` are independent. `AddDefaults()` is convenience, not contract.
 6. **Operational concerns are first-class.** `print-config`, `data migrate`, `data
-   psql`, `__panic`, `MUST_MIGRATE`, embedded migrations — debuggability ships with the
+   psql`, `<prefix>/panic`, `MUST_MIGRATE`, embedded migrations — debuggability ships with the
    binary.
 7. **Punt distributed-systems problems to infrastructure.** HA is "use pgbouncer." No
    service mesh, no retry framework, no pluggable transport.

@@ -15,7 +15,30 @@ worker.Stop()  // graceful shutdown
 ```
 
 `Start` opens its own database pool and closes it when it returns, so start/stop
-cycles do not accumulate connections.
+cycles do not accumulate connections. `StartContext(ctx)` does the same with job
+contexts descending from `ctx`; the `worker` command passes the app's context, which
+carries `buildinfo` (see [buildinfo.md](buildinfo.md)).
+
+## Filters
+
+The worker runs one job at a time; scaling is by process. Each job goes through three
+stages:
+
+1. **Preparation, fixed:** resolve the job by name, `Reset` it, decode its payload.
+2. **Filters:** each `worker.Filter` takes the prepared job and returns it, usually
+   wrapped in a `worker.Stub{JobName, RunFunc}` whose `Run` defers around the inner
+   `Run`. Filters apply in list order, each wrapping the result of the one before, so the
+   last is outermost. A filter that returns an error fails the job without running it.
+3. **Settle, fixed:** mark the job failed or completed from the run's result.
+
+`worker.New` installs `SentryFilter`, `RecoverFilter` and `LogFilter`, in that order;
+`SetFilters(...)` replaces the list.
+
+* `SentryFilter` — when `SENTRY_DSN` is set, scopes the run and reports its panic or
+  returned error. It sits before `RecoverFilter` so it sees the panic first.
+* `RecoverFilter` — turns a panic into the run's error, so the job is marked failed and
+  the worker keeps running.
+* `LogFilter` — logs `running`, then `completed` or `failed` with the duration.
 
 ## Job Interface
 

@@ -74,7 +74,7 @@ justification — and even then, prefer making it optional with a sensible defau
 
 `print-config`, `data migrate`, `data psql`, `CI=1` / `ALWAYS_YES=1` flags,
 `EmbedMigrations` via `go:embed` for prod, `MUST_MIGRATE` gate, Sentry middleware,
-`__panic` route. The CLI exists to make a deployed binary debuggable without shelling
+`<prefix>/panic` route. The CLI exists to make a deployed binary debuggable without shelling
 around.
 
 **Implication:** any new subsystem should answer "how do I debug this in prod?" before

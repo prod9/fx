@@ -64,20 +64,22 @@ Points to note:
 Some default middlewares are included when `.AddDefaults()` is called:
 
 * `middlewares.Configure` — Injects `*config.Source` into the request context.
+* `middlewares.Sentry` — When `SENTRY_DSN` is set, scopes each request and reports its
+  panics through `fxsentry` (see [sentry.md](sentry.md)); otherwise passes requests
+  through. Decided once, when the handler is built.
 * `middlewares.LogRequests` — Captures metrics with `github.com/felixge/httpsnoop` and
   logs requests/responses.
 * `middlewares.CORSAllowAll()` — Wraps `github.com/rs/cors` to allow all CORS requests,
   or only the comma-separated origins in `CORS_ORIGINS` when set.
 * `middlewares.AddDataContext` — Adds a `*sqlx.DB` to the request context.
+* `middlewares.CheckMigrations` — If `MUST_MIGRATE=1` is set, all routes return errors
+  until all known migrations are applied. Once a check finds them clean, later requests
+  pass through without checking again.
 
 Some other non-default middlewares include:
 
-* `middlewares.CheckMigrations` — If `MUST_MIGRATE=1` is set, all routes will return
-  errors until all known migrations are applied.
 * `middlewares.DebugRequest` — Prints out incoming request body if `DEBUG_REQUEST=1` is
   set, or prints out the outgoing response body if `DEBUG_RESPONSE=1` is set.
-* `middlewares.Sentry` — Installs sentry error reporting handler with DSN set in
-  `SENTRY_DSN` environment variable.
 
 Use go-chi's `Route` and `Group` to create sub-routes and apply middlewares selectively.
 
