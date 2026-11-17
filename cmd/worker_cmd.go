@@ -13,7 +13,7 @@ func BuildWorkerCommand(jobs ...worker.Interface) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := config.Configure()
 			w := worker.New(cfg, jobs...)
-			return w.Start()
+			return w.StartContext(cmd.Context())
 		},
 	}
 }

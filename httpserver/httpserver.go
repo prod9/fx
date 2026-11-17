@@ -1,6 +1,8 @@
 package httpserver
 
 import (
+	"context"
+	"net"
 	"net/http"
 
 	"fx.prodigy9.co/config"
@@ -26,6 +28,11 @@ func NewWithFragments(cfg *config.Source, fragments []*Fragment) *Server {
 }
 
 func (s *Server) Start() error {
+	return s.StartContext(context.Background())
+}
+
+// StartContext serves until CTRL-C; every request context descends from ctx.
+func (s *Server) StartContext(ctx context.Context) error {
 	router := chi.NewRouter()
 
 	for _, frag := range s.fragments {
@@ -36,12 +43,13 @@ func (s *Server) Start() error {
 
 	listenAddr := config.Get(s.cfg, ListenAddrConfig)
 	srv := http.Server{
-		Addr:    listenAddr,
-		Handler: router,
+		Addr:        listenAddr,
+		Handler:     router,
+		BaseContext: func(net.Listener) context.Context { return ctx },
 	}
 
 	ctrlc.Do(func() {
-		srv.Shutdown(nil)
+		srv.Shutdown(context.Background())
 	})
 
 	fxlog.Log("listening", fxlog.String("addr", listenAddr))

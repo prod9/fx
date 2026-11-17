@@ -31,8 +31,8 @@ func buildServeCommand(buildServer func() *httpserver.Server) *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
 		Short: "Starts an HTTP server.",
-		RunE: func(_ *cobra.Command, args []string) error {
-			return buildServer().Start()
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return buildServer().StartContext(cmd.Context())
 		},
 	}
 

@@ -68,6 +68,7 @@ configuration issues.
 | `app/audit`              | Append-only audit trail (`Record`/`Log`/`List`, `audit_events` migration) |
 | `app/files`              | S3-backed file management (presigned URLs, PostgreSQL metadata)            |
 | `app/settings`           | Key-value settings fragment (embedded migration, config provider, guarded REST) |
+| `buildinfo`              | Program name and version (`Get`, `Info` on the context)                    |
 | `config`                 | Type-safe env var config (`Var[T]`, `config.Get`, `.env`/`.env.local`)     |
 | `httpserver`             | HTTP server startup                                                        |
 | `httpserver/controllers` | Controller interface (`Mount(cfg, router) error`) using go-chi             |

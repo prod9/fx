@@ -125,7 +125,12 @@ func (w *Worker) Register(jobs ...Interface) {
 	}
 }
 
-func (w *Worker) Start() (err error) {
+func (w *Worker) Start() error {
+	return w.StartContext(context.Background())
+}
+
+// StartContext runs the worker until stopped; job contexts descend from ctx.
+func (w *Worker) StartContext(ctx context.Context) (err error) {
 	defer errutil.Wrap("worker", &err)
 
 	if w.cfg == nil {
@@ -138,12 +143,7 @@ func (w *Worker) Start() (err error) {
 	}
 	defer db.Close()
 
-	var (
-		ctx    context.Context
-		cancel context.CancelCauseFunc
-	)
-
-	ctx, cancel = context.WithCancelCause(context.Background())
+	ctx, cancel := context.WithCancelCause(ctx)
 	ctx = config.NewContext(ctx, w.cfg)
 	ctx = data.NewContext(ctx, db)
 

@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"embed"
 
+	"fx.prodigy9.co/buildinfo"
 	"fx.prodigy9.co/cmd"
 	"fx.prodigy9.co/httpserver/controllers"
 	"fx.prodigy9.co/httpserver/middlewares"
@@ -39,7 +41,13 @@ func Start(app Interface) error {
 		cmds = append(cmds, cmd.BuildServeCommandFromFragments(fragment))
 	}
 
+	info := buildinfo.Get()
+	if name := app.Name(); name != "" {
+		info = info.WithName(name)
+	}
+	ctx := buildinfo.NewContext(context.Background(), info)
+
 	return cmd.
 		BuildRootCommand(app.Description(), cmds...).
-		Execute()
+		ExecuteContext(ctx)
 }
