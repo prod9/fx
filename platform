@@ -1,5 +1,18 @@
 #!/bin/sh
+set -e
 
-PLATFORM_VERSION="v0.9.56"
+PLATFORM_MODULE="platform.prodigy9.co"
+PLATFORM_VERSION="v0.10.0"
 
-go run "platform.prodigy9.co@$PLATFORM_VERSION" "$@"
+bindir="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)/bin"
+bin="$bindir/platform-$PLATFORM_VERSION"
+
+if [ ! -x "$bin" ]; then
+    echo "platform: installing $PLATFORM_VERSION (cold compile may take minutes)..." >&2
+    mkdir -p "$bindir"
+    printf '*\n' > "$bindir/.gitignore"
+    GOBIN="$bindir" go install "$PLATFORM_MODULE@$PLATFORM_VERSION"
+    mv "$bindir/$PLATFORM_MODULE" "$bin"
+fi
+
+exec "$bin" "$@"

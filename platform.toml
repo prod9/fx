@@ -3,9 +3,7 @@
 maintainer = "Chakrit Wichian <chakrit@prodigy9.co>"
 local_arch = "auto"
 publish_arch = "amd64"
-repository = "https://github.com/prod9/fx"
-
-environments = ["fx.prodigy9.co"]
+repository = "github.com/prod9/fx"
 strategy = "semver"
 
 excludes = [
