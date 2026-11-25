@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.11.1
+
+* **worker:** New `CleanupJob` prunes finished job rows so the jobs table stops growing.
+  Rows stuck running longer than `WORKER_STALE_DURATION` (default 1h) are failed as
+  abandoned; finished rows are kept for a day, except each job's latest failure. It runs
+  every two stale durations.
+* **cmd:** New `worker cleanup` runs the same cleanup once, synchronously.
+* **docs:** Workers spec covers cleanup; new investigation of SQLite and Cloudflare D1
+  support.
+
 ## v0.11.0
 
 * **config:** `Var.WithAlias` keeps older names readable; the first read through an
