@@ -120,19 +120,29 @@ w := worker.New(cfg, &SendEmailJob{}, worker.CleanupJob)
 worker.ScheduleNowIfNotExists(ctx, worker.CleanupJob)
 ```
 
-Each run does two things, using `WORKER_STALE_DURATION` as the only threshold:
+Each run does two things:
 
-1. A `running` row whose `updated_at` is older than the stale duration is marked
+1. A `running` row whose `updated_at` is older than `WORKER_STALE_DURATION` is marked
    `failed` with error `abandoned`. FX has no heartbeat, so a worker that died mid-job
-   would otherwise leave the row `running` forever. This assumes no job legitimately
-   runs longer than the stale duration. The update stamps `updated_at`, so the
-   abandoned row stays visible for one more stale period.
-2. `completed` and `failed` rows older than the stale duration are deleted. `pending`
-   rows are never touched.
+   would otherwise leave the row `running` forever. The default of one hour treats any
+   job running longer as a fault worth an operator's look; an app whose jobs
+   legitimately run longer raises it. This is the only cleanup setting: it is the one
+   value that depends on the app's jobs.
+2. `completed` and `failed` rows older than a fixed retention of one day are deleted,
+   except the latest `failed` row of each job name (by `id`), which is kept until a newer
+   failure of that job replaces it. Any retention window would hide a job that fails
+   unnoticed for longer than the window; keeping one failure per name keeps that evidence
+   while the table stays bounded by the number of job names, not the number of runs.
+   `pending` rows are never touched.
 
 The deletion is a single `DELETE`; there is no batching knob, since Postgres handles the
-volume. The job reschedules itself every stale duration and assumes a setup that runs
-the worker regularly: it makes no attempt to catch up on missed runs.
+volume. The job reschedules itself every two stale durations (two hours by default):
+abandonment is the exception a sound worker setup rarely produces, so a crashed job may
+show `running` for up to three stale durations. The job assumes a setup that runs the
+worker regularly and makes no attempt to catch up on missed runs.
+
+Alerting on failures is the job of `SentryFilter` and `LogFilter`, not of the `jobs`
+table. A recurring job that keeps failing keeps running; FX has no circuit breaker yet.
 
 `<app> worker cleanup` runs the same cleanup synchronously and exits, without a worker
 process or scheduling anything.
@@ -140,5 +150,5 @@ process or scheduling anything.
 ## Configuration
 
 * `WORKER_POLL` — Polling interval (default: `1m`).
-* `WORKER_STALE_DURATION` — Age after which finished jobs are deleted and running jobs
-  are marked abandoned; also the cleanup job's cadence (default: `48h`).
+* `WORKER_STALE_DURATION` — How long a job may stay `running` before cleanup marks it
+  abandoned; cleanup runs every two of these (default: `1h`).

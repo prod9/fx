@@ -77,7 +77,11 @@ const (
 
 	DeleteStaleJobsSQL = `
 		DELETE FROM jobs
-		WHERE status IN ($1, $2) AND updated_at < $3;`
+		WHERE status IN ($1, $2) AND updated_at < $3
+			AND id NOT IN (
+				SELECT max(id) FROM jobs
+				WHERE status = $2
+				GROUP BY name);`
 )
 
 type JobStatus string

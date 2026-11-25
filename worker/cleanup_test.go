@@ -7,61 +7,75 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"fx.prodigy9.co/config"
 	"fx.prodigy9.co/data"
 	"fx.prodigy9.co/fxtest"
 )
 
-// TestCleanup asserts the cleanup contract in docs/spec/workers.md "Cleanup": rows that
-// need no further processing are deleted once stale, pending rows are never touched, and
-// a running row past the stale duration is failed as abandoned and kept for one more
-// stale period before it goes too.
+// TestCleanup asserts the cleanup contract in docs/spec/workers.md "Cleanup": a running
+// row past the stale duration is failed as abandoned; finished rows past the retention
+// are deleted, except each job name's latest failure; pending rows are never touched.
 func TestCleanup(t *testing.T) {
 	ctx := fxtest.ConnectTestDatabase(t)
 	require.NoError(t, ensureJobsTable(ctx))
 
-	const stale = 48 * time.Hour
+	const stale = time.Hour
 	var (
-		now     = time.Now()
-		old     = now.Add(-stale - time.Hour)
-		recent  = now.Add(-time.Hour)
-		nextRun = now.Add(stale + time.Minute)
+		now             = time.Now()
+		pastRetention   = now.Add(-cleanupRetention - time.Hour)
+		withinRetention = now.Add(-2 * stale)
+		withinStale     = now.Add(-stale / 2)
 	)
 
-	oldCompleted := insertJob(t, ctx, CompletedStatus, old)
-	oldFailed := insertJob(t, ctx, FailedStatus, old)
-	oldPending := insertJob(t, ctx, PendingStatus, old)
-	oldRunning := insertJob(t, ctx, RunningStatus, old)
-	recentCompleted := insertJob(t, ctx, CompletedStatus, recent)
-	recentFailed := insertJob(t, ctx, FailedStatus, recent)
-	recentRunning := insertJob(t, ctx, RunningStatus, recent)
+	olderFailure := insertJob(t, ctx, "flaky", FailedStatus, pastRetention.Add(-time.Hour))
+	latestFailure := insertJob(t, ctx, "flaky", FailedStatus, pastRetention)
+	oldCompleted := insertJob(t, ctx, "steady", CompletedStatus, pastRetention)
+	recentCompleted := insertJob(t, ctx, "steady", CompletedStatus, withinRetention)
+	oldPending := insertJob(t, ctx, "queued", PendingStatus, pastRetention)
+	staleRunning := insertJob(t, ctx, "crashed", RunningStatus, withinRetention)
+	liveRunning := insertJob(t, ctx, "busy", RunningStatus, withinStale)
 
 	require.NoError(t, Cleanup(ctx, now, stale))
 
-	require.False(t, jobExists(t, ctx, oldCompleted), "stale completed job must be deleted")
-	require.False(t, jobExists(t, ctx, oldFailed), "stale failed job must be deleted")
+	require.False(t, jobExists(t, ctx, olderFailure), "superseded failure must be deleted")
+	require.True(t, jobExists(t, ctx, latestFailure),
+		"a job name's latest failure must survive retention")
+	require.False(t, jobExists(t, ctx, oldCompleted), "completed job past retention must go")
+	require.True(t, jobExists(t, ctx, recentCompleted),
+		"completed job within retention must survive")
 	require.True(t, jobExists(t, ctx, oldPending), "pending job must never be deleted")
-	require.True(t, jobExists(t, ctx, recentCompleted), "recent completed job must survive")
-	require.True(t, jobExists(t, ctx, recentFailed), "recent failed job must survive")
-	require.Equal(t, RunningStatus, jobStatus(t, ctx, recentRunning),
-		"recently running job must be left alone")
+	require.Equal(t, RunningStatus, jobStatus(t, ctx, liveRunning),
+		"running job within the stale duration must be left alone")
 
-	require.Equal(t, FailedStatus, jobStatus(t, ctx, oldRunning),
-		"stale running job must be failed as abandoned")
-	require.True(t, jobExists(t, ctx, oldRunning),
-		"abandoned job must stay visible until it goes stale as failed")
-
-	require.NoError(t, Cleanup(ctx, nextRun, stale))
-	require.False(t, jobExists(t, ctx, oldRunning),
-		"abandoned job must be deleted once stale as failed")
+	require.Equal(t, FailedStatus, jobStatus(t, ctx, staleRunning),
+		"running job past the stale duration must be failed")
+	require.Equal(t, abandonedError, jobError(t, ctx, staleRunning))
 }
 
-func insertJob(t *testing.T, ctx context.Context, status JobStatus, updatedAt time.Time) int64 {
+// TestCleanupJob_ReschedulesAtTwiceStale asserts the cadence in docs/spec/workers.md
+// "Cleanup": the job runs again two stale durations after each run.
+func TestCleanupJob_ReschedulesAtTwiceStale(t *testing.T) {
+	ctx := fxtest.ConnectTestDatabase(t)
+	stale := config.Get(config.FromContext(ctx), StaleDurationConfig)
+	before := time.Now()
+
+	require.NoError(t, CleanupJob.Run(ctx))
+
+	next := Job{}
+	require.NoError(t, data.Get(ctx, &next,
+		`SELECT * FROM jobs WHERE name = $1 AND status = $2`,
+		CleanupJob.Name(), PendingStatus))
+	require.WithinRange(t, next.ScheduledAt,
+		before.Add(2*stale), time.Now().Add(2*stale))
+}
+
+func insertJob(t *testing.T, ctx context.Context, name string, status JobStatus, updatedAt time.Time) int64 {
 	id := int64(0)
 	err := data.Get(ctx, &id, `
 		INSERT INTO jobs (name, status, updated_at)
-		VALUES ('cleanup-test', $1, $2)
+		VALUES ($1, $2, $3)
 		RETURNING id`,
-		status, updatedAt)
+		name, status, updatedAt)
 	require.NoError(t, err)
 	return id
 }
@@ -78,4 +92,11 @@ func jobStatus(t *testing.T, ctx context.Context, id int64) JobStatus {
 	err := data.Get(ctx, &status, `SELECT status FROM jobs WHERE id = $1`, id)
 	require.NoError(t, err)
 	return status
+}
+
+func jobError(t *testing.T, ctx context.Context, id int64) string {
+	errText := ""
+	err := data.Get(ctx, &errText, `SELECT error FROM jobs WHERE id = $1`, id)
+	require.NoError(t, err)
+	return errText
 }
